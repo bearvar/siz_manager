@@ -1,0 +1,99 @@
+Вот мой view функция для главной страницы:
+```
+import json
+from xmlrpc.client import Boolean
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import HttpResponseRedirect
+from .models import Item, Person
+from users.models import CustomUser
+from django.core.paginator import Paginator
+from django.utils import timezone
+from .forms import ItemForm
+from django.contrib.auth.decorators import login_required
+from dateutil.relativedelta import relativedelta
+from collections import defaultdict
+from datetime import datetime, date, timedelta
+import openpyxl
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+def index(request):
+    title = "Главная страница"
+    item_list = Item.objects.select_related('person').filter(suggested_review_date__gte=timezone.now()).order_by('person_id', 'suggested_review_date')
+    
+    # Group items by person and then by suggested_review_date
+    grouped_items = defaultdict(lambda: defaultdict(list))
+    for item in item_list:
+        if item.person_id is not None:
+            grouped_items[item.person][item.suggested_review_date].append(item)
+    
+    # For each person, keep only the items with the closest suggested_review_date
+    final_grouped_items = {}
+    for person, dates_items in grouped_items.items():
+        closest_date = min(dates_items.keys())
+        final_grouped_items[person] = dates_items[closest_date]
+    
+    context = {
+        'title': title,
+        'grouped_items': final_grouped_items,
+        'user': request.user,
+    }
+    return render(request, 'items/index.html', context)
+```
+Вот шаблон главной страницы (index.html):
+```
+{% extends 'base.html' %}
+
+{% block title %}
+  {{ title }}
+{% endblock %}
+
+{% block content %}
+  <div class="container py-3 col-9">
+    {% for person, items in grouped_items.items %}
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">{{ person.name }}</h3>
+        </div>
+        <div class="card-body">
+          <div class="flex-table">
+            <!-- Header Row -->
+            <div class="flex-row flex-header">
+              <div class="group-name">Наименование группы СИЗ</div>
+              <div class="os-name">Наименование ОС</div>
+              <div>Дата последнего осмотра</div>
+              <div>Дата следующего осмотра</div>
+              <div>Рекомендуемая дата осмотра</div>
+              <div>Категория</div>
+              <!-- <div>Ответственный</div> -->
+            </div>
+            <!-- Data Rows -->
+            {% for item in items %}
+              <div class="flex-row">
+                <div class="group-name"><a href="{% url 'items:item_detail' item_id=item.id %}">{{ item.group_name }}</a></div>
+                <div class="os-name">{{ item.item_name }}</div>
+                <div>{{ item.last_review_date|date:"d.m.Y" }}</div>
+                <div>{{ item.next_review_date|date:"d.m.Y" }}</div>
+                <div>{{ item.suggested_review_date|date:"d.m.Y" }}</div>
+                <div>{{ item.category }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+
+    {% include 'core/includes/paginator.html' %}
+  </div>
+{% endblock %}
+```
+Это взято из моего предыдущего проекта, который по факту является идейным вдохновителем того что я делаю сейчас. Исправь эти файлы чтобы они соответствовали текущему проекту.
+Я бы хотел чтобы тут:
+```
+        <div class="card-header">
+          <h3 class="card-title">{{ person.name }}</h3>
+        </div>
+```
+было не только ФИО работника но и его должность (with right align, while name is left align). Имя также пусть остается жирным, а должность каким-то другим менее заметным шрифтом. В общем на твое веб-дизайнерское усмотрение.

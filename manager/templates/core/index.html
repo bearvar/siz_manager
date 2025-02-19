@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  {{ title }}
+{% endblock %}
+
+{% block content %}
+  <div class="container py-3 col-9">
+    {% for employee, issues in grouped_issues.items %}
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">
+            {{ employee.last_name }} 
+            {{ employee.first_name }} 
+            {{ employee.patronymic }}
+          </h3>
+          <div class="text-muted small">
+            Должность: {{ employee.position.position_name|default:"не указана" }}
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="flex-table">
+            <!-- Заголовки таблицы -->
+            <div class="flex-row flex-header">
+              <div class="col-3">Наименование СИЗ</div>
+              <div class="col-2">Тип СИЗ</div>
+              <div class="col-2">Дата выдачи</div>
+              <div class="col-2">Срок годности</div>
+              <div class="col-1">Ед. изм.</div>
+              <div class="col-2">Статус</div>
+            </div>
+            
+            <!-- Строки с данными -->
+            {% for issue in issues %}
+              <div class="flex-row {% if issue.expiration_date < current_date %}table-danger{% endif %}">
+                <div class="col-3">{{ issue.item.item_name }}</div>
+                <div class="col-2">{{ issue.item.item_type }}</div>
+                <div class="col-2">{{ issue.issue_date|date:"d.m.Y" }}</div>
+                <div class="col-2">{{ issue.expiration_date|date:"d.m.Y" }}</div>
+                <div class="col-1">{{ issue.item.get_item_mu_display }}</div>
+                <div class="col-2">
+                  {% if issue.is_active %}
+                    <span class="text-success">Активно</span>
+                  {% else %}
+                    <span class="text-danger">Списано</span>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="alert alert-info">Нет активных выдач СИЗ</div>
+    {% endfor %}
+  </div>
+{% endblock %}

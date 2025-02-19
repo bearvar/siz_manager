@@ -17,17 +17,6 @@ class Position(models.Model):
         return self.position_name
 
 class Employee(models.Model):
-    first_name = models.CharField("Имя", max_length=50)
-    last_name = models.CharField("Фамилия", max_length=50)
-    patronymic = models.CharField("Отчество", max_length=50)
-    position = models.ForeignKey(
-        Position,
-        on_delete=models.SET_NULL,
-        verbose_name="Должность",
-        null=True,
-        related_name="employees"
-    )
-class Employee(models.Model):
     # Существующие поля
     first_name = models.CharField("Имя", max_length=50)
     last_name = models.CharField("Фамилия", max_length=50)
