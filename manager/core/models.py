@@ -174,17 +174,22 @@ class Item(models.Model):
         ("мл.", "миллилитров"),
     )
     item_type = models.CharField(
-        "Тип СИЗ",
+        "Тип",
         max_length=250,
-        help_text="Тип СИЗ"
+        help_text="Тип СИЗ, предмета"
     )
     item_name = models.CharField(
-        "Наименование СИЗ",
+        "Наименование",
         max_length=250,
+        help_text="Наименование СИЗ, предмета"
     )
     item_lifespan = models.PositiveIntegerField(
         "Срок годности (в месяцах)",
         help_text="Срок годности (в месяцах)"
+    )
+    item_size = models.CharField(
+        "Размер",
+        max_length=100,
     )
     item_mu = models.CharField(
         "Единица измерения",
