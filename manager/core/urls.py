@@ -16,4 +16,5 @@ urlpatterns = [
     path('norm/edit/<int:position_id>/', views.norm_edit, name='norm_edit'),
     path('norm/update/<int:norm_id>/', views.norm_update, name='norm_update'),
     path('norm/delete/<int:norm_id>/', views.norm_delete, name='norm_delete'),
+    path('employees/<int:employee_id>/issues/create/', views.create_issue, name='create_issue'),
 ]

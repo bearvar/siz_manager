@@ -5,15 +5,35 @@
 {% endblock %}
 
 {% block content %}
-  <div class="container py-5">
-    <h1>{{ position.position_name }}</h1>
-    {# <a href="{% url 'core:norm_create' position_id=position.id %}" class="btn btn-primary">Добавить норму</a> #}
-    <ul>
-      {% for norm in norms %}
-        <li>
-          {{ norm.item_type }} - {{ norm.quantity }}
-        </li>
-      {% endfor %}
-    </ul>
+<div class="container py-5">
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h2 class="mb-0">{{ position.position_name }}</h2>
+      <a href="{% url 'core:norm_edit' position.id %}" class="btn btn-primary">
+        <i class="bi bi-pencil"></i> Редактировать нормы
+      </a>
+    </div>
+    
+    <div class="card-body">
+      <h4>Установленные нормы выдачи:</h4>
+      <div class="list-group">
+        {% for norm in position.norms.all %}
+          <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <h5 class="mb-1">{{ norm.ppe_type.name }}</h5>
+              <small class="text-muted">
+                {{ norm.quantity }} {{ norm.ppe_type.items.first.item_mu|default:"ед." }}
+              </small>
+            </div>
+            <span class="badge bg-primary rounded-pill">
+              {{ norm.ppe_type.items.count }} вариантов СИЗ
+            </span>
+          </div>
+        {% empty %}
+          <div class="alert alert-info">Нормы выдачи не установлены</div>
+        {% endfor %}
+      </div>
+    </div>
   </div>
+</div>
 {% endblock %}

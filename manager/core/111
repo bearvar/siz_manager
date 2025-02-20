@@ -1,0 +1,590 @@
+Хорошо. Я сейчас отправлю текущее состояние моего проекта и затем скажу, что нужно сделать.
+/core/models.py:
+```
+from django.db import models
+from django.core.exceptions import ValidationError
+from dateutil.relativedelta import relativedelta
+
+class Position(models.Model):
+    position_name = models.CharField(
+        "Название должности",
+        max_length=100,
+        unique=True
+    )
+    
+    class Meta:
+        verbose_name = "Должность"
+        verbose_name_plural = "Должности"
+    
+    def __str__(self):
+        return self.position_name
+
+class Employee(models.Model):
+    # Существующие поля
+    first_name = models.CharField("Имя", max_length=50)
+    last_name = models.CharField("Фамилия", max_length=50)
+    patronymic = models.CharField("Отчество", max_length=50)
+    position = models.ForeignKey(
+        Position,
+        on_delete=models.SET_NULL,
+        verbose_name="Должность",
+        null=True,
+        related_name="employees"
+    )
+    department = models.CharField("Подразделение", max_length=50)
+    
+    BODY_SIZE_CHOICES = [
+        ("40-42/158-164", "40-42/158-164"),
+        ("44-46/158-164", "44-46/158-164"),
+        ("44-46/170-176", "44-46/170-176"),
+        ("44-46/182-188", "44-46/182-188"),
+        ("44-46/194-200", "44-46/194-200"),
+        ("48-50/158-164", "48-50/158-164"),
+        ("48-50/170-176", "48-50/170-176"),
+        ("48-50/182-188", "48-50/182-188"),
+        ("48-50/194-200", "48-50/194-200"),
+        ("52-54/158-164", "52-54/158-164"),
+        ("52-54/170-176", "52-54/170-176"),
+        ("52-54/182-188", "52-54/182-188"),
+        ("52-54/194-200", "52-54/194-200"),
+        ("56-58/158-164", "56-58/158-164"),
+        ("56-58/170-176", "56-58/170-176"),
+        ("56-58/182-188", "56-58/182-188"),
+        ("56-58/194-200", "56-58/194-200"),
+        ("60-62/158-164", "60-62/158-164"),
+        ("60-62/170-176", "60-62/170-176"),
+        ("60-62/182-188", "60-62/182-188"),
+        ("60-62/194-200", "60-62/194-200"),
+        ("64-66/158-164", "64-66/158-164"),
+        ("64-66/170-176", "64-66/170-176"),
+        ("64-66/182-188", "64-66/182-188"),
+        ("64-66/194-200", "64-66/194-200"),
+        ("68-70/158-164", "68-70/158-164"),
+        ("68-70/170-176", "68-70/170-176"),
+        ("68-70/182-188", "68-70/182-188"),
+        ("68-70/194-200", "68-70/194-200"),
+        ("72-74/194-200", "72-74/194-200"),
+    ]
+    
+    HEAD_SIZE_CHOICES = [
+        ("51", "51"),
+        ("52", "52"),
+        ("53", "53"),
+        ("54", "54"),
+        ("55", "55"),
+        ("56", "56"),
+        ("57", "57"),
+        ("58", "58"),
+        ("59", "59"),
+        ("60", "60"),
+        ("61", "61"),
+        ("62", "62"),
+        ("63", "63"),
+    ]
+    
+    GLOVE_SIZE_CHOICES = [
+        (6.0, 6.0),
+        (6.5, 6.5),
+        (7.0, 7.0),
+        (7.5, 7.5),
+        (8.0, 8.0),
+        (8.5, 8.5),
+        (9.0, 9.0),
+        (9.5, 9.5),
+        (10.0, 10.0),
+        (10.5, 10.5),
+        (11.0, 11.0),
+        (11.5, 11.5),
+        (12.0, 12.0),
+    ]
+    
+    SHOE_SIZE_CHOICES = [(i, str(i)) for i in range(35, 53)]  # 35-52
+    
+    body_size = models.CharField(
+        "Размер спецодежды (тело)",
+        max_length=40,
+        choices=BODY_SIZE_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Пример: 44-46/158-164"
+    )
+    
+    head_size = models.CharField(
+        "Размер головного убора",
+        max_length=3,
+        choices=HEAD_SIZE_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Пример: 56, 57, 58"
+    )
+    
+    glove_size = models.FloatField(
+        "Размер перчаток",
+        choices=GLOVE_SIZE_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Пример: 8.0, 8.5 ... 11.0"
+    )
+    
+    shoe_size = models.IntegerField(
+        "Размер обуви",
+        choices=SHOE_SIZE_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Пример: 35, 36 ... 52"
+    )
+    
+    class Meta:
+        verbose_name = "Сотрудник"
+        verbose_name_plural = "Сотрудники"
+        ordering = ["last_name", "first_name", "patronymic"]
+    
+    def issue_item(self, item_type, quantity=1, issue_date=None, expiration_date=None):
+        """
+        Выдает указанное количество СИЗ сотруднику.
+        """
+        if not issue_date:
+            raise ValueError("Поле 'Дата выдачи' обязательно для заполнения.")
+        
+        for _ in range(quantity):
+            Issue.objects.create(
+                employee=self,
+                item_type=item_type,
+                issue_date=issue_date,
+                expiration_date=expiration_date
+            )
+    
+    def __str__(self):
+        return f"{self.last_name} {self.first_name} {self.patronymic}".strip()
+
+    # Логика не финальная
+    def get_position_change_report(self, new_position):
+        """
+        Возвращает отчет о необходимых изменениях при переводе на новую должность.
+        Формат:
+        {
+            "to_remove": {item: количество_к_списанию},
+            "to_issue": {item: количество_к_выдаче}
+        }
+        """
+        # Текущие активные выдачи сотрудника
+        current_issues = self.issues.filter(is_active=True)
+        
+        # Нормы для новой должности
+        new_norms = Norm.objects.filter(position=new_position)
+        
+        # СИЗ, которые должны быть у сотрудника по новой должности
+        required_items = {norm.item: norm.quantity for norm in new_norms}
+        
+        # СИЗ, которые есть у сотрудника сейчас
+        current_items = {}
+        for issue in current_issues:
+            current_items[issue.item] = current_items.get(issue.item, 0) + 1
+        
+        # Определяем избыточные СИЗ
+        items_to_remove = {}
+        for item, count in current_items.items():
+            required_count = required_items.get(item, 0)
+            if count > required_count:
+                items_to_remove[item] = count - required_count
+        
+        # Определяем недостающие СИЗ
+        items_to_add = {}
+        for item, required_count in required_items.items():
+            current_count = current_items.get(item, 0)
+            if required_count > current_count:
+                items_to_add[item] = required_count - current_count
+        
+        return {
+            "to_remove": items_to_remove,
+            "to_issue": items_to_add
+        }
+
+class Item(models.Model):
+    MEASUREMENT_UNITS = (
+        ("шт.", "штук"),
+        ("пар.", "пар"),
+        ("компл.", "комплектов"),
+        ("г.", "грамм"),
+        ("мл.", "миллилитров"),
+    )
+    item_name = models.CharField(
+        "Наименование",
+        max_length=250,
+        help_text="Наименование СИЗ, предмета"
+    )
+    item_lifespan = models.PositiveIntegerField(
+        "Срок годности (в месяцах)",
+        help_text="Срок годности (в месяцах)"
+    )
+    item_size = models.CharField(
+        "Размер",
+        max_length=100,
+    )
+    item_mu = models.CharField(
+        "Единица измерения",
+        max_length=10,
+        choices=MEASUREMENT_UNITS,
+        default="шт."
+    )
+    
+    class Meta:
+        verbose_name = "СИЗ"
+        verbose_name_plural = "СИЗ"
+    
+    def __str__(self):
+        return f"{self.item_name}, ({self.get_item_mu_display()})"
+
+class Norm(models.Model):
+    position = models.ForeignKey(
+        Position,
+        on_delete=models.CASCADE,
+        verbose_name="Должность",
+        related_name="norms"
+    )
+    item_type = models.CharField(
+        "Тип СИЗ",
+        max_length=255,
+        help_text="Тип СИЗ (например, ботинки, перчатки)",
+        unique=True
+    )
+    quantity = models.PositiveIntegerField(
+        "Количество",
+        default=1,
+        help_text="Сколько единиц СИЗ положено для этой должности"
+    )
+
+    class Meta:
+        verbose_name = "Норма выдачи"
+        verbose_name_plural = "Нормы выдачи"
+    
+    def __str__(self):
+        return f"{self.position}: {self.item_type} x{self.quantity}"
+
+class Issue(models.Model):
+    employee = models.ForeignKey(
+        "Employee",
+        on_delete=models.CASCADE,
+        verbose_name="Сотрудник",
+        related_name="issues"
+    )
+    item_type = models.CharField(
+        "Тип СИЗ",
+        max_length=255,
+        help_text="Тип СИЗ (например, ботинки, перчатки)"
+    )
+    item = models.ForeignKey(
+        "Item",
+        on_delete=models.CASCADE,
+        verbose_name="СИЗ",
+        related_name="issues",
+        null=True,
+        blank=True
+    )
+    quantity = models.PositiveIntegerField(
+        "Количество",
+        default=1,
+        editable=False  # Запрещаем изменять вручную
+    )
+    issue_date = models.DateField(
+        "Дата выдачи",
+        blank=False,
+        null=False,
+        help_text="Дата выдачи СИЗ сотруднику"
+    )
+    expiration_date = models.DateField(
+        "Срок годности до",
+        blank=True,
+        help_text="Срок годности СИЗ"
+    )
+    is_active = models.BooleanField(
+        "Активно (не списано)",
+        default=True
+    )
+
+    class Meta:
+        verbose_name = "Выдача СИЗ"
+        verbose_name_plural = "Выдачи СИЗ"
+        ordering = ["-issue_date"]
+
+    def __str__(self):
+        status = "активно" if self.is_active else "списано"
+        return f"{self.employee}: {self.item_type} ({status})"
+
+    def clean(self):
+        """
+        Проверяет, не превышает ли выдача норму для должности.
+        """
+        if not self.is_active:
+            return
+        
+        if not self.employee:
+            raise ValidationError("Сотрудник не указан.")
+        
+        norm = Norm.objects.filter(
+            position=self.employee.position,
+            item_type=self.item_type
+        ).first()
+
+        if not norm:
+            raise ValidationError(
+                f"Для должности {self.employee.position} не задана норма по СИЗ {self.item_type}."
+            )
+        
+        active_issues = Issue.objects.filter(
+            employee=self.employee,
+            item_type=self.item_type,
+            is_active=True
+        ).exclude(pk=self.pk)
+
+        if active_issues.count() + 1 > norm.quantity:
+            raise ValidationError(
+                f"Превышена норма. Доступно к выдаче: {norm.quantity - active_issues.count()} ед."
+            )
+        
+    def save(self, *args, **kwargs):
+        if not self.issue_date:
+            raise ValidationError("Поле 'Дата выдачи' обязательно для заполнения.")
+        
+        # if not self.expiration_date and self.item:
+        #     self.expiration_date = self.issue_date + relativedelta(months=self.item.item_lifespan)
+
+        self.clean()
+        super().save(*args, **kwargs)
+```
+/core/views.py:
+```
+import json
+from xmlrpc.client import Boolean
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import HttpResponseRedirect
+from .models import Employee, Item, Issue, Norm, Position
+from users.models import CustomUser
+from django.core.paginator import Paginator
+from django.utils import timezone
+# from .forms import ItemForm
+from django.contrib.auth.decorators import login_required
+from dateutil.relativedelta import relativedelta
+from collections import defaultdict
+from datetime import datetime, date, timedelta
+import openpyxl
+import logging
+from .forms import EmployeeForm, PositionForm, NormCreateForm
+from django.urls import reverse
+from django.http import JsonResponse
+
+
+logger = logging.getLogger(__name__)
+
+
+def index(request):
+    title = "Главная страница"
+    
+    # Получаем все активные выдачи СИЗ с предзагрузкой связанных объектов
+    issue_list = Issue.objects.select_related('employee', 'item').filter(is_active=True).order_by('employee', '-issue_date')
+    
+    # Группируем выдачи по сотрудникам
+    grouped_issues = defaultdict(list)
+    for issue in issue_list:
+        grouped_issues[issue.employee].append(issue)
+    
+    context = {
+        'title': title,
+        'grouped_issues': dict(grouped_issues),
+        'user': request.user,
+        'current_date': timezone.now().date()
+    }
+    return render(request, 'core/index.html', context)
+
+
+@login_required
+def position_list(request):
+    positions = Position.objects.all()
+    return render(request, 'core/position_list.html', {'positions': positions})
+
+
+@login_required
+def list_items(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    # Get all issues for the employee
+    issues = Issue.objects.filter(employee=employee)
+    # Extract the items from the issues
+    items = [issue.item for issue in issues]
+    return render(request, 'core/list_items.html', {'items': items, 'employee': employee})
+
+
+@login_required
+def profile(request, username):
+    author_obj = get_object_or_404(CustomUser, username=username)
+    # items = author_obj.items.all()
+    # paginator = Paginator(items, 30)
+    # page_number = request.GET.get('page')
+    # page_obj = paginator.get_page(page_number)
+    context = {
+        'author_obj': author_obj,
+        # 'items': items,
+        # 'page_obj': page_obj,
+    }
+    return render(request, 'core/profile.html', context)
+
+
+@login_required
+def employee_create(request):
+    if request.method == 'POST':
+        form = EmployeeForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('core:index')  # Redirect to the index page after successful creation
+    else:
+        form = EmployeeForm()
+    return render(request, 'core/create_employee.html', {'form': form})
+
+
+@login_required
+def position_create(request):
+    if request.method == 'POST':
+        form = PositionForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('core:index')  # Redirect to the index page after successful creation
+    else:
+        form = PositionForm()
+    return render(request, 'core/create_position.html', {'form': form})
+
+
+@login_required
+def create_norm(request, position_id):
+    position = get_object_or_404(Position, pk=position_id)
+    
+    if request.method == 'POST':
+        form = NormCreateForm(request.POST, instance=Norm(position=position))
+        if form.is_valid():
+            norm = form.save()
+            return redirect('core:position_detail', position_id=position.id)
+    else:
+        form = NormCreateForm(instance=Norm(position=position))
+
+    context = {
+        'title': f'Добавление нормы для {position.position_name}',
+        'form': form,
+        'position': position
+    }
+    return render(request, 'core/create_norm.html', context)
+
+
+@login_required
+def position_detail(request, position_id):
+    position = get_object_or_404(Position, pk=position_id)
+    norms = Norm.objects.filter(position=position)
+    return render(request, 'core/position_detail.html', {'position': position, 'norms': norms})
+
+
+@login_required
+def employee_list(request):
+    employees = Employee.objects.all()
+    return render(request, 'core/employee_list.html', {'employees': employees})
+
+
+@login_required
+def norm_edit(request, position_id):
+    position = get_object_or_404(Position, pk=position_id)
+    norms = Norm.objects.filter(position=position)
+    return render(request, 'core/norm_edit.html', {'position': position, 'norms': norms})
+
+
+@login_required
+def norm_update(request, norm_id):
+    norm = get_object_or_404(Norm, pk=norm_id)
+    if request.method == 'POST':
+        quantity = request.POST.get('quantity')
+        norm_id_from_form = request.POST.get('norm_id')
+        try:
+            quantity = int(quantity)
+            if quantity > 0:
+                norm.quantity = quantity
+                norm.save()
+                return redirect('core:norm_edit', position_id=norm.position.id)
+            else:
+                return render(request, 'core/norm_edit.html', {'position': norm.position, 'norms': Norm.objects.filter(position=norm.position), 'error': 'Quantity must be a positive integer.'})
+        except ValueError:
+            return render(request, 'core/norm_edit.html', {'position': norm.position, 'norms': Norm.objects.filter(position=norm.position), 'error': 'Invalid quantity value.'})
+    else:
+        return HttpResponse("Invalid request method", status=405)
+
+
+@login_required
+def norm_delete(request, norm_id):
+    norm = get_object_or_404(Norm, pk=norm_id)
+    norm.delete()
+    return redirect('core:norm_edit', position_id=norm.position.id)
+```
+/core/forms.py:
+```
+from django import forms
+from .models import Employee
+
+from django import forms
+from .models import Employee, Position, Norm, Item
+
+class EmployeeForm(forms.ModelForm):
+    class Meta:
+        model = Employee
+        fields = ['last_name', 'first_name', 'patronymic', 'position', 'department', 'body_size', 'head_size', 'glove_size', 'shoe_size']
+        widgets = {
+            'position': forms.Select(attrs={'class': 'form-control'})
+        }
+
+class PositionForm(forms.ModelForm):
+    class Meta:
+        model = Position
+        fields = ['position_name']
+
+class NormCreateForm(forms.ModelForm):
+    class Meta:
+        model = Norm
+        fields = ['item_type', 'quantity']
+        labels = {
+            'item_type': 'Тип СИЗ',
+            'quantity': 'Количество'
+        }
+        help_texts = {
+            'item_type': 'Укажите тип СИЗ',
+            'quantity': 'Укажите количество для выдачи'
+        },
+        
+    def clean(self):
+        cleaned_data = super().clean()
+        item_type = cleaned_data.get("item_type")
+
+        # Проверяем, существует ли уже норма с таким типом СИЗ для данной должности
+        if self._meta.model.objects.filter(position=self.instance.position, item_type=item_type).exists():
+            raise forms.ValidationError(
+                "Уже существует норма с таким типом СИЗ для данной должности."
+            )
+
+        return cleaned_data
+```
+/core/urls.py:
+```
+from django.urls import path
+from . import views
+
+app_name = 'core'
+
+urlpatterns = [
+    path('items/<int:employee_id>/', views.list_items, name='list_items'),
+    path('', views.index, name='index'),
+    path('profile/<str:username>/', views.profile, name='profile'),
+    path('employee/create/', views.employee_create, name='employee_create'),
+    path('position/create/', views.position_create, name='position_create'),
+    path('norm/create/<int:position_id>/', views.create_norm, name='norm_create'),
+    path('positions/', views.position_list, name='position_list'),
+    path('position/<int:position_id>/', views.position_detail, name='position_detail'),
+    path('employees/', views.employee_list, name='employee_list'),
+    path('norm/edit/<int:position_id>/', views.norm_edit, name='norm_edit'),
+    path('norm/update/<int:norm_id>/', views.norm_update, name='norm_update'),
+    path('norm/delete/<int:norm_id>/', views.norm_delete, name='norm_delete'),
+]
+```
+Шаблоны посмотри тут: https://github.com/bearvar/siz_manager/tree/main/manager/templates
+Задача: нужно сделать функционал выдачи предметов работнику. Учитывая все твое объяснение в предыдущем сообщении. Так, по порядку. Нужно добавить кнопку в шаблоне list_items.html, которая будет называться "Выдать СИЗ". При нажатии на эту кнопку будет открываться форма выдачи СИЗ (оформи ее в таком же стиле как create_norm.html). И самое важное это сама форма, view функции и роутер (пути). Опишу процесс работы пользователя, а ты на основе этого сделаешь фукнционал. Пользователь создает Должность (позицию), например "Инженер", создает нормы выдачи для "Инженера", например ботники - 1 шт, перчатки - 4 пары, костюм - 2 компл. Затем открывает форму выдачи СИЗ, где должен выбрать типа СИЗ, наример "костюм" (в соответствии с нормами) и ввести остальные параметры предмета. Сложность (по крайней мере для моего понимания), что у нас в модели Item нет поля item_type. Нужно как-то это все связать с другими моделями. Также (важно!) тип предмета не задан заранее, БД будет заполняться пользователем автоматически, и из того что внес пользователь в БД при заполнении норм, можно выбирать в форме выдачи СИЗ.

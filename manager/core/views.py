@@ -2,7 +2,7 @@ import json
 from xmlrpc.client import Boolean
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponseRedirect
-from .models import Employee, Item, Issue, Norm, Position
+from .models import Employee, Position, Norm, Item, Issue, PPEType
 from users.models import CustomUser
 from django.core.paginator import Paginator
 from django.utils import timezone
@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import datetime, date, timedelta
 import openpyxl
 import logging
-from .forms import EmployeeForm, PositionForm, NormCreateForm
+from .forms import EmployeeForm, PositionForm, NormCreateForm, IssueCreateForm
 from django.urls import reverse
 from django.http import JsonResponse
 
@@ -101,19 +101,17 @@ def create_norm(request, position_id):
     position = get_object_or_404(Position, pk=position_id)
     
     if request.method == 'POST':
-        form = NormCreateForm(request.POST, instance=Norm(position=position))
+        form = NormCreateForm(request.POST, position=position)
         if form.is_valid():
-            norm = form.save()
+            form.save()
             return redirect('core:position_detail', position_id=position.id)
     else:
-        form = NormCreateForm(instance=Norm(position=position))
-
-    context = {
-        'title': f'Добавление нормы для {position.position_name}',
+        form = NormCreateForm(position=position)
+    
+    return render(request, 'core/create_norm.html', {
         'form': form,
         'position': position
-    }
-    return render(request, 'core/create_norm.html', context)
+    })
 
 
 @login_required
@@ -161,3 +159,27 @@ def norm_delete(request, norm_id):
     norm = get_object_or_404(Norm, pk=norm_id)
     norm.delete()
     return redirect('core:norm_edit', position_id=norm.position.id)
+
+
+def create_issue(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    
+    if request.method == 'POST':
+        form = IssueCreateForm(request.POST, employee=employee)
+        if form.is_valid():
+            created_issues = form.save_multiple()
+            return redirect('employee_detail', employee_id=employee.id)
+    else:
+        form = IssueCreateForm(employee=employee)
+    
+    return render(request, 'core/create_issue.html', {
+        'form': form,
+        'employee': employee
+    })
+    
+
+def deactivate_issue(request, issue_id):
+    issue = get_object_or_404(Issue, pk=issue_id)
+    issue.is_active = False
+    issue.save()
+    return redirect('employee_detail', employee_id=issue.employee.id)

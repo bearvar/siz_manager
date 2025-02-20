@@ -15,6 +15,9 @@
     <article>
       <div class="card-body">
         <h1>СИЗ сотрудника: {{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h1>
+        <a href="{% url 'core:create_issue' employee.id %}" class="btn btn-success">
+          <i class="bi bi-plus-circle"></i> Выдать СИЗ
+        </a>
         <table class="table table-striped">
           <thead>
             <tr>
