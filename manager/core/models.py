@@ -243,7 +243,6 @@ class Norm(models.Model):
         "Тип СИЗ",
         max_length=255,
         help_text="Тип СИЗ (например, ботинки, перчатки)",
-        default="Ботинки",
         unique=True
     )
     quantity = models.PositiveIntegerField(

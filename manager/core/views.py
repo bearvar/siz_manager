@@ -107,3 +107,42 @@ def position_detail(request, position_id):
     position = get_object_or_404(Position, pk=position_id)
     norms = Norm.objects.filter(position=position)
     return render(request, 'core/position_detail.html', {'position': position, 'norms': norms})
+
+
+@login_required
+def employee_list(request):
+    employees = Employee.objects.all()
+    return render(request, 'core/employee_list.html', {'employees': employees})
+
+@login_required
+def norm_edit(request, position_id):
+    position = get_object_or_404(Position, pk=position_id)
+    norms = Norm.objects.filter(position=position)
+    return render(request, 'core/norm_edit.html', {'position': position, 'norms': norms})
+
+from django.http import JsonResponse
+
+@login_required
+def norm_update(request, norm_id):
+    norm = get_object_or_404(Norm, pk=norm_id)
+    if request.method == 'POST':
+        quantity = request.POST.get('quantity')
+        norm_id_from_form = request.POST.get('norm_id')
+        try:
+            quantity = int(quantity)
+            if quantity > 0:
+                norm.quantity = quantity
+                norm.save()
+                return redirect('core:norm_edit', position_id=norm.position.id)
+            else:
+                return render(request, 'core/norm_edit.html', {'position': norm.position, 'norms': Norm.objects.filter(position=norm.position), 'error': 'Quantity must be a positive integer.'})
+        except ValueError:
+            return render(request, 'core/norm_edit.html', {'position': norm.position, 'norms': Norm.objects.filter(position=norm.position), 'error': 'Invalid quantity value.'})
+    else:
+        return HttpResponse("Invalid request method", status=405)
+
+@login_required
+def norm_delete(request, norm_id):
+    norm = get_object_or_404(Norm, pk=norm_id)
+    norm.delete()
+    return redirect('core:norm_edit', position_id=norm.position.id)

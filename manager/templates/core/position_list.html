@@ -5,15 +5,43 @@
 {% endblock %}
 
 {% block content %}
-  <div class="container py-5">
-    <h1>Список должностей</h1>
-    <ul>
-      {% for position in positions %}
-        <li>
-          {{ position.position_name }}
-          <a href="{% url 'core:norm_create' position_id=position.id %}" class="btn btn-primary">Редактировать нормы</a>
-        </li>
-      {% endfor %}
-    </ul>
+  <style>
+    .wider-table {
+      max-width: 40%;
+      margin: 0 auto;
+    }
+  </style>
+  <div class="container-fluid py-3 wider-table">
+    <article>
+      <div class="card-body">
+        <a href="{% url 'core:position_create' %}" class="btn btn-primary mb-3">Добавить должность</a>
+
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Название должности</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for position in positions %}
+            <tr>
+              <td>
+                {{ position.position_name }}
+              </td>
+              <td>
+                <a href="{% url 'core:norm_create' position_id=position.id %}" class="btn btn-primary">Добавить норму</a>
+                <a href="{% url 'core:norm_edit' position_id=position.id %}" class="btn btn-primary">Изменить нормы</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="2">Должности не найдены.</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
   </div>
 {% endblock %}

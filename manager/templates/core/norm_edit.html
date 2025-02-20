@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  Редактирование норм для {{ position.position_name }}
+{% endblock %}
+
+{% block content %}
+  <div class="container py-5">
+    <h1>Редактирование норм для должности: {{ position.position_name }}</h1>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Тип СИЗ</th>
+          <th>Количество</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for norm in norms %}
+          <tr>
+            <td>{{ norm.item_type }}</td>
+            <td>
+              <form method="post" action="{% url 'core:norm_update' norm_id=norm.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="norm_id" value="{{ norm.id }}">
+                <input type="number" name="quantity" value="{{ norm.quantity }}" class="form-control form-control-sm">
+            </td>
+            <td>
+                <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+              </form>
+              <a href="{% url 'core:norm_delete' norm_id=norm.id %}" class="btn btn-sm btn-danger">Удалить</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
