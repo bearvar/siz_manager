@@ -345,15 +345,6 @@ class Issue(models.Model):
         
         # if not self.expiration_date and self.item:
         #     self.expiration_date = self.issue_date + relativedelta(months=self.item.item_lifespan)
-        
-
-    def save(self, *args, **kwargs):
-        if not self.issue_date:
-            raise ValidationError("Поле 'Дата выдачи' обязательно для заполнения.")
-
-        # Рассчитываем срок годности, если он не задан
-        # if not self.expiration_date and self.item:
-        #     self.expiration_date = self.issue_date + relativedelta(months=self.item.item_lifespan)
 
         self.clean()
         super().save(*args, **kwargs)

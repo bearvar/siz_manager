@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  Список СИЗ
+{% endblock %}
+
+{% block content %}
+  <style>
+    .wider-table {
+      max-width: 80%;
+      margin: 0 auto;
+    }
+  </style>
+  <div class="container-fluid py-3 wider-table">
+    <article>
+      <div class="card-body">
+        <h1>СИЗ сотрудника: {{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h1>
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Наименование</th>
+              <th>Срок годности (в месяцах)</th>
+              <th>Размер</th>
+              <th>Единица измерения</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+              <tr>
+                <td>{{ item.item_name }}</td>
+                <td>{{ item.item_lifespan }}</td>
+                <td>{{ item.item_size }}</td>
+                <td>{{ item.item_mu }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4">Нет СИЗ</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+{% endblock %}

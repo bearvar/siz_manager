@@ -15,14 +15,11 @@ import openpyxl
 import logging
 from .forms import EmployeeForm, PositionForm, NormCreateForm
 from django.urls import reverse
+from django.http import JsonResponse
 
 
 logger = logging.getLogger(__name__)
 
-@login_required
-def position_list(request):
-    positions = Position.objects.all()
-    return render(request, 'core/position_list.html', {'positions': positions})
 
 def index(request):
     title = "Главная страница"
@@ -42,6 +39,22 @@ def index(request):
         'current_date': timezone.now().date()
     }
     return render(request, 'core/index.html', context)
+
+
+@login_required
+def position_list(request):
+    positions = Position.objects.all()
+    return render(request, 'core/position_list.html', {'positions': positions})
+
+
+@login_required
+def list_items(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    # Get all issues for the employee
+    issues = Issue.objects.filter(employee=employee)
+    # Extract the items from the issues
+    items = [issue.item for issue in issues]
+    return render(request, 'core/list_items.html', {'items': items, 'employee': employee})
 
 
 @login_required
@@ -102,6 +115,7 @@ def create_norm(request, position_id):
     }
     return render(request, 'core/create_norm.html', context)
 
+
 @login_required
 def position_detail(request, position_id):
     position = get_object_or_404(Position, pk=position_id)
@@ -114,13 +128,13 @@ def employee_list(request):
     employees = Employee.objects.all()
     return render(request, 'core/employee_list.html', {'employees': employees})
 
+
 @login_required
 def norm_edit(request, position_id):
     position = get_object_or_404(Position, pk=position_id)
     norms = Norm.objects.filter(position=position)
     return render(request, 'core/norm_edit.html', {'position': position, 'norms': norms})
 
-from django.http import JsonResponse
 
 @login_required
 def norm_update(request, norm_id):
@@ -140,6 +154,7 @@ def norm_update(request, norm_id):
             return render(request, 'core/norm_edit.html', {'position': norm.position, 'norms': Norm.objects.filter(position=norm.position), 'error': 'Invalid quantity value.'})
     else:
         return HttpResponse("Invalid request method", status=405)
+
 
 @login_required
 def norm_delete(request, norm_id):
