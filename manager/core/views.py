@@ -2,7 +2,7 @@ import json
 from xmlrpc.client import Boolean
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponseRedirect
-from .models import Employee, Item, Issue, Norm
+from .models import Employee, Item, Issue, Norm, Position
 from users.models import CustomUser
 from django.core.paginator import Paginator
 from django.utils import timezone
@@ -13,10 +13,16 @@ from collections import defaultdict
 from datetime import datetime, date, timedelta
 import openpyxl
 import logging
-from .forms import EmployeeForm, PositionForm
+from .forms import EmployeeForm, PositionForm, NormCreateForm
+from django.urls import reverse
 
 
 logger = logging.getLogger(__name__)
+
+@login_required
+def position_list(request):
+    positions = Position.objects.all()
+    return render(request, 'core/position_list.html', {'positions': positions})
 
 def index(request):
     title = "Главная страница"
@@ -78,23 +84,26 @@ def position_create(request):
 
 
 @login_required
-def item_create(request):
+def create_norm(request, position_id):
+    position = get_object_or_404(Position, pk=position_id)
+    
     if request.method == 'POST':
-        form_name = request.POST.get('form_name', '')
-        
-        # Handle manual form submission
-        form = ItemForm(request.POST)
+        form = NormCreateForm(request.POST, instance=Norm(position=position))
         if form.is_valid():
-            item = form.save(commit=False)
-            item.author = request.user
-            item.save()
-            logger.info(f"Created new item: {item}")
-            return redirect('items:profile', username=request.user.username)
-        else:
-            logger.error(f"Form is not valid: {form.errors}")
-            return render(request, 'items/create_item.html', {'form': form})
-
-    # GET request case - render an empty form
+            norm = form.save()
+            return redirect('core:position_detail', position_id=position.id)
     else:
-        form = ItemForm()
-        return render(request, 'items/create_item.html', {'form': form})
+        form = NormCreateForm(instance=Norm(position=position))
+
+    context = {
+        'title': f'Добавление нормы для {position.position_name}',
+        'form': form,
+        'position': position
+    }
+    return render(request, 'core/create_norm.html', context)
+
+@login_required
+def position_detail(request, position_id):
+    position = get_object_or_404(Position, pk=position_id)
+    norms = Norm.objects.filter(position=position)
+    return render(request, 'core/position_detail.html', {'position': position, 'norms': norms})

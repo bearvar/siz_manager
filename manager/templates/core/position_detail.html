@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}
+  {{ position.position_name }}
+{% endblock %}
+
+{% block content %}
+  <div class="container py-5">
+    <h1>{{ position.position_name }}</h1>
+    <a href="{% url 'core:norm_create' position_id=position.id %}" class="btn btn-primary">Добавить норму</a>
+    <ul>
+      {% for norm in norms %}
+        <li>
+          {{ norm.item_type }} - {{ norm.quantity }}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endblock %}
