@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+  <head> 
+    <title>
+      {% block title %} 
+        {{author_obj.username}}
+        {% if author_obj.get_full_name %}
+          Профиль ответственного {{author_obj.get_full_name}}
+        {% else %}
+          Профиль ответственного {{author_obj.username}}
+        {% endif %}
+      {% endblock %}
+    </title>
+  </head>
+  <body>
+    <main>
+    </main>
+  </body>

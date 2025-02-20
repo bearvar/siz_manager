@@ -18,7 +18,7 @@ class CreationForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = ('first_name', 'last_name', 'patronymic', 'username', 'email', 'position', 'department')
+        fields = ('last_name', 'first_name', 'patronymic', 'username', 'email', 'position', 'department')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

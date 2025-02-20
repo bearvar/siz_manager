@@ -39,7 +39,9 @@
                 <li class="nav-item white-text dropdown">
                   <a class="nav-link white-text dropdown-toggle {% if view_name  == 'users:profile' or view_name  == 'users:password_change' or view_name  == 'users:logout' %}active{% endif %}" href="#" id="navbarDropdownMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false"></a>
                   <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-                    <!-- <li><a class="dropdown-item" href="{% url 'users:profile' %}">Профиль</a></li> -->
+                    <li><a class="dropdown-item" href="{% url 'core:profile' username=user.username %}">Профиль</a></li>
+                    <li><a class="dropdown-item" href="{% url 'core:position_create' %}">Добавить должность</a></li>
+                    <li><a class="dropdown-item" href="{% url 'core:employee_create' %}">Добавить работника</a></li>
                     <li><a class="dropdown-item" href="{% url 'users:password_change' %}">Изменить пароль</a></li>
                     <li><a class="dropdown-item" href="{% url 'users:logout' %}">Выйти</a></li>
                   </ul>

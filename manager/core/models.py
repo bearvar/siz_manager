@@ -115,9 +115,8 @@ class Employee(models.Model):
         help_text="Пример: 56, 57, 58"
     )
     
-    glove_size = models.CharField(
+    glove_size = models.FloatField(
         "Размер перчаток",
-        max_length=4,
         choices=GLOVE_SIZE_CHOICES,
         blank=True,
         null=True,
