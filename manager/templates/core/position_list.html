@@ -27,7 +27,7 @@
           {% for position in positions %}
             <tr>
               <td>
-                {{ position.position_name }}
+                <a href="{% url 'core:position_detail' position_id=position.id %}" >{{ position.position_name }}</a>
               </td>
               <td>
                 <a href="{% url 'core:norm_create' position_id=position.id %}" class="btn btn-primary">Добавить норму</a>

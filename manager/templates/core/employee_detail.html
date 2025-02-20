@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Employee Detail</h1>
+  <h2>{{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h2>
+  <p>Position: {{ employee.position }}</p>
+
+  <h3>Issued Items:</h3>
+  <ul>
+    {% for issue in issues %}
+      <li>{{ issue.item }} - Issued on: {{ issue.issue_date }}</li>
+    {% endfor %}
+  </ul>
+
+  <a href="{% url 'core:create_issue' employee_id=employee.id %}">Issue New Item</a>
+{% endblock %}

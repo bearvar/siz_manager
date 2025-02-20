@@ -82,8 +82,13 @@ class NormCreateForm(forms.ModelForm):
             instance.save()
         return instance
 
+
 class IssueCreateForm(forms.ModelForm):
-    quantity = forms.IntegerField(min_value=1, initial=1)
+    quantity = forms.IntegerField(
+        min_value=1,
+        initial=1,
+        label="Количество для выдачи"
+    )
 
     class Meta:
         model = Issue
@@ -97,12 +102,17 @@ class IssueCreateForm(forms.ModelForm):
         self.employee = kwargs.pop('employee')
         super().__init__(*args, **kwargs)
         
-        # Получаем разрешенные типы СИЗ для должности
-        allowed_types = PPEType.objects.filter(
+        # Получаем типы СИЗ из норм должности сотрудника
+        ppe_types = PPEType.objects.filter(
             norms__position=self.employee.position
         ).distinct()
         
         # Фильтруем предметы по разрешенным типам
         self.fields['item'].queryset = Item.objects.filter(
-            ppe_type__in=allowed_types
-        )
+            ppe_type__in=ppe_types
+        ).select_related('ppe_type')
+        
+        # Добавляем стили и подсказки
+        self.fields['item'].widget.attrs.update({'class': 'form-select'})
+        self.fields['item'].empty_label = "Выберите СИЗ из списка"
+        self.fields['item'].help_text = "Доступные СИЗ по нормам должности"

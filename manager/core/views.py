@@ -126,51 +126,90 @@ def employee_list(request):
     employees = Employee.objects.all()
     return render(request, 'core/employee_list.html', {'employees': employees})
 
+from django.shortcuts import get_object_or_404, render
+
+@login_required
+def employee_detail(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    issues = Issue.objects.filter(employee=employee)
+    return render(request, 'core/employee_detail.html', {'employee': employee, 'issues': issues})
+
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib import messages
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from .models import Norm, Position
 
 @login_required
 def norm_edit(request, position_id):
-    position = get_object_or_404(Position, pk=position_id)
-    norms = Norm.objects.filter(position=position)
-    return render(request, 'core/norm_edit.html', {'position': position, 'norms': norms})
-
+    position = get_object_or_404(
+        Position.objects.prefetch_related('norms__ppe_type'), 
+        pk=position_id
+    )
+    return render(request, 'core/norm_edit.html', {
+        'position': position,
+        'norms': position.norms.all()
+    })
 
 @login_required
+@require_http_methods(["POST"])
 def norm_update(request, norm_id):
-    norm = get_object_or_404(Norm, pk=norm_id)
-    if request.method == 'POST':
-        quantity = request.POST.get('quantity')
-        norm_id_from_form = request.POST.get('norm_id')
-        try:
-            quantity = int(quantity)
-            if quantity > 0:
-                norm.quantity = quantity
-                norm.save()
-                return redirect('core:norm_edit', position_id=norm.position.id)
-            else:
-                return render(request, 'core/norm_edit.html', {'position': norm.position, 'norms': Norm.objects.filter(position=norm.position), 'error': 'Quantity must be a positive integer.'})
-        except ValueError:
-            return render(request, 'core/norm_edit.html', {'position': norm.position, 'norms': Norm.objects.filter(position=norm.position), 'error': 'Invalid quantity value.'})
-    else:
-        return HttpResponse("Invalid request method", status=405)
-
-
-@login_required
-def norm_delete(request, norm_id):
-    norm = get_object_or_404(Norm, pk=norm_id)
-    norm.delete()
+    try:
+        norm = Norm.objects.select_related('position').get(pk=norm_id)
+        quantity = int(request.POST.get('quantity', 0))
+        
+        if quantity < 1:
+            raise ValueError("Количество должно быть положительным числом")
+            
+        norm.quantity = quantity
+        norm.save()
+        messages.success(request, f"Норма для {norm.ppe_type.name} обновлена")
+        
+    except Norm.DoesNotExist:
+        messages.error(request, "Норма не найдена")
+    except ValueError as e:
+        messages.error(request, str(e))
+    except Exception as e:
+        messages.error(request, f"Ошибка при обновлении: {str(e)}")
+    
     return redirect('core:norm_edit', position_id=norm.position.id)
 
+@login_required
+@require_http_methods(["POST"])
+def norm_delete(request, norm_id):
+    try:
+        norm = Norm.objects.select_related('position').get(pk=norm_id)
+        position_id = norm.position.id
+        ppe_type_name = norm.ppe_type.name
+        norm.delete()
+        messages.success(request, f"Норма для {ppe_type_name} удалена")
+    except Norm.DoesNotExist:
+        messages.error(request, "Норма не найдена")
+    except Exception as e:
+        messages.error(request, f"Ошибка при удалении: {str(e)}")
+    
+    return redirect('core:norm_edit', position_id=position_id)
 
+
+@login_required
 def create_issue(request, employee_id):
-    employee = get_object_or_404(Employee, pk=employee_id)
+    employee = get_object_or_404(Employee.objects.select_related('position'), pk=employee_id)
+    
+    if not employee.position:
+        messages.error(request, "Сотрудник не имеет назначенной должности")
+        return redirect('employee_list')
     
     if request.method == 'POST':
         form = IssueCreateForm(request.POST, employee=employee)
         if form.is_valid():
-            created_issues = form.save_multiple()
-            return redirect('employee_detail', employee_id=employee.id)
+            # Сохранение с обработкой количества
+            return redirect('core:employee_detail', employee_id=employee.id)
     else:
         form = IssueCreateForm(employee=employee)
+    
+    # Добавляем проверку пустого списка
+    if not form.fields['item'].queryset.exists():
+        messages.warning(request, "Нет доступных СИЗ по нормам текущей должности")
     
     return render(request, 'core/create_issue.html', {
         'form': form,
@@ -182,4 +221,4 @@ def deactivate_issue(request, issue_id):
     issue = get_object_or_404(Issue, pk=issue_id)
     issue.is_active = False
     issue.save()
-    return redirect('employee_detail', employee_id=issue.employee.id)
+    return redirect('core:employee_detail', employee_id=issue.employee.id)
