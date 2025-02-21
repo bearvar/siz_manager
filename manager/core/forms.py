@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from .models import Employee
 
 from django import forms
-from .models import Employee, Position, Norm, Item, Issue, PPEType
+from .models import Employee, Position, Norm, Issue, PPEType
 
 class EmployeeForm(forms.ModelForm):
     class Meta:
@@ -89,30 +89,29 @@ class IssueCreateForm(forms.ModelForm):
         initial=1,
         label="Количество для выдачи"
     )
+    item_size = forms.CharField(
+        label="Размер",
+        max_length=100,
+        required=False,
+        help_text="Укажите размер (например, 42, L, 10.5)"
+    )
 
     class Meta:
         model = Issue
-        fields = ['item', 'issue_date', 'expiration_date']
+        fields = ['ppe_type', 'issue_date', 'item_size']  # Убрали expiration_date
         widgets = {
             'issue_date': forms.DateInput(attrs={'type': 'date'}),
-            'expiration_date': forms.DateInput(attrs={'type': 'date'}),
         }
 
     def __init__(self, *args, **kwargs):
         self.employee = kwargs.pop('employee')
         super().__init__(*args, **kwargs)
         
-        # Получаем типы СИЗ из норм должности сотрудника
-        ppe_types = PPEType.objects.filter(
+        # Фильтруем типы СИЗ по нормам должности
+        self.fields['ppe_type'].queryset = PPEType.objects.filter(
             norms__position=self.employee.position
         ).distinct()
         
-        # Фильтруем предметы по разрешенным типам
-        self.fields['item'].queryset = Item.objects.filter(
-            ppe_type__in=ppe_types
-        ).select_related('ppe_type')
-        
-        # Добавляем стили и подсказки
-        self.fields['item'].widget.attrs.update({'class': 'form-select'})
-        self.fields['item'].empty_label = "Выберите СИЗ из списка"
-        self.fields['item'].help_text = "Доступные СИЗ по нормам должности"
+        # Настройка полей
+        self.fields['ppe_type'].widget.attrs.update({'class': 'form-select'})
+        self.fields['ppe_type'].empty_label = "Выберите тип СИЗ"

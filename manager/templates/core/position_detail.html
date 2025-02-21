@@ -22,12 +22,10 @@
             <div>
               <h5 class="mb-1">{{ norm.ppe_type.name }}</h5>
               <small class="text-muted">
-                {{ norm.quantity }} {{ norm.ppe_type.items.first.item_mu|default:"ед." }}
+                {{ norm.quantity }} {{ norm.ppe_type.default_mu|default:"ед." }}  <!-- Используем default_mu из PPEType -->
               </small>
             </div>
-            <span class="badge bg-primary rounded-pill">
-              {{ norm.ppe_type.items.count }} вариантов СИЗ
-            </span>
+            <!-- Убираем счетчик вариантов, так как модели Item больше нет -->
           </div>
         {% empty %}
           <div class="alert alert-info">Нормы выдачи не установлены</div>

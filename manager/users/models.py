@@ -4,7 +4,6 @@ from django.db import models
 class CustomUser(AbstractUser):
     patronymic = models.CharField(
         max_length=150,
-        blank=True,
         verbose_name='Отчество'
     )
     position = models.CharField(

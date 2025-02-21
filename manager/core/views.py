@@ -2,7 +2,7 @@ import json
 from xmlrpc.client import Boolean
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponseRedirect
-from .models import Employee, Position, Norm, Item, Issue, PPEType
+from .models import Employee, Position, Norm, Issue, PPEType
 from users.models import CustomUser
 from django.core.paginator import Paginator
 from django.utils import timezone
@@ -25,17 +25,17 @@ def index(request):
     title = "Главная страница"
     
     # Получаем все активные выдачи СИЗ с предзагрузкой связанных объектов
-    issue_list = Issue.objects.select_related('employee', 'item').filter(is_active=True).order_by('employee', '-issue_date')
+    # issue_list = Issue.objects.select_related('employee', 'item').filter(is_active=True).order_by('employee', '-issue_date')
     
     # Группируем выдачи по сотрудникам
-    grouped_issues = defaultdict(list)
-    for issue in issue_list:
-        grouped_issues[issue.employee].append(issue)
+    # grouped_issues = defaultdict(list)
+    # for issue in issue_list:
+    #     grouped_issues[issue.employee].append(issue)
     
     context = {
         'title': title,
-        'grouped_issues': dict(grouped_issues),
-        'user': request.user,
+        # 'grouped_issues': dict(grouped_issues),
+        # 'user': request.user,
         'current_date': timezone.now().date()
     }
     return render(request, 'core/index.html', context)
@@ -50,12 +50,12 @@ def position_list(request):
 @login_required
 def list_items(request, employee_id):
     employee = get_object_or_404(Employee, pk=employee_id)
-    # Get all issues for the employee
+    # Получаем все выдачи (issues) вместо items
     issues = Issue.objects.filter(employee=employee)
-    # Extract the items from the issues
-    items = [issue.item for issue in issues]
-    return render(request, 'core/list_items.html', {'items': items, 'employee': employee})
-
+    return render(request, 'core/list_items.html', {
+        'issues': issues,  # Передаем issues вместо items
+        'employee': employee
+    })
 
 @login_required
 def profile(request, username):
@@ -190,35 +190,35 @@ def norm_delete(request, norm_id):
     
     return redirect('core:norm_edit', position_id=position_id)
 
-
 @login_required
 def create_issue(request, employee_id):
-    employee = get_object_or_404(Employee.objects.select_related('position'), pk=employee_id)
+    employee = get_object_or_404(Employee, pk=employee_id)
     
     if not employee.position:
         messages.error(request, "Сотрудник не имеет назначенной должности")
-        return redirect('employee_list')
+        return redirect('core:employee_list')
     
     if request.method == 'POST':
         form = IssueCreateForm(request.POST, employee=employee)
         if form.is_valid():
-            # Сохранение с обработкой количества
+            ppe_type = form.cleaned_data['ppe_type']
+            norm = Norm.objects.get(position=employee.position, ppe_type=ppe_type)
+            
+            # Создаем Issue без указания expiration_date
+            for _ in range(form.cleaned_data['quantity']):
+                Issue.objects.create(
+                    employee=employee,
+                    ppe_type=ppe_type,
+                    issue_date=form.cleaned_data['issue_date'],
+                    item_lifespan=norm.lifespan,  # Срок из нормы
+                    item_size=form.cleaned_data['item_size'],  # Размер из формы
+                    item_mu=ppe_type.default_mu  # Единица измерения из PPEType
+                )
             return redirect('core:employee_detail', employee_id=employee.id)
     else:
         form = IssueCreateForm(employee=employee)
-    
-    # Добавляем проверку пустого списка
-    if not form.fields['item'].queryset.exists():
-        messages.warning(request, "Нет доступных СИЗ по нормам текущей должности")
     
     return render(request, 'core/create_issue.html', {
         'form': form,
         'employee': employee
     })
-    
-
-def deactivate_issue(request, issue_id):
-    issue = get_object_or_404(Issue, pk=issue_id)
-    issue.is_active = False
-    issue.save()
-    return redirect('core:employee_detail', employee_id=issue.employee.id)

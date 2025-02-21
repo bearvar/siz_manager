@@ -1,16 +1,83 @@
 {% extends 'base.html' %}
 
+{% block title %}
+  Детали работника
+{% endblock %}
+
 {% block content %}
-  <h1>Employee Detail</h1>
-  <h2>{{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h2>
-  <p>Position: {{ employee.position }}</p>
+  <style>
+    .wider-table {
+      max-width: 90%;
+      margin: 0 auto;
+    }
+  </style>
+  <div class="container-fluid py-3 wider-table">
+    <article>
+      <div class="card-body">
+        <h1>Детали работника</h1>
+        <h2>{{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h2>
 
-  <h3>Issued Items:</h3>
-  <ul>
-    {% for issue in issues %}
-      <li>{{ issue.item }} - Issued on: {{ issue.issue_date }}</li>
-    {% endfor %}
-  </ul>
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Фамилия</th>
+              <th>Имя</th>
+              <th>Отчество</th>
+              <th>Должность</th>
+              <th>Подразделение</th>
+              <th>Размер спецодежды</th>
+              <th>Размер головного убора</th>
+              <th>Размер перчаток</th>
+              <th>Размер обуви</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ employee.last_name }}</td>
+              <td>{{ employee.first_name }}</td>
+              <td>{{ employee.patronymic }}</td>
+              <td>{{ employee.position }}</td>
+              <td>{{ employee.department }}</td>
+              <td>{{ employee.body_size }}</td>
+              <td>{{ employee.head_size }}</td>
+              <td>{{ employee.glove_size }}</td>
+              <td>{{ employee.shoe_size }}</td>
+            </tr>
+          </tbody>
+        </table>
 
-  <a href="{% url 'core:create_issue' employee_id=employee.id %}">Issue New Item</a>
+        <h3>Выданные предметы:</h3>
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Наименование</th>
+              <th>Размер</th>
+              <th>Единица измерения</th>
+              <th>Дата выдачи</th>
+              <th>Дата списания</th>
+              <th>Срок годности (мес.)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for issue in issues %}
+              <tr>
+                <td>{{ issue.ppe_type.name }}</td>
+                <td>{{ issue.item_size }}</td>
+                <td>{{ issue.get_item_mu_display }}</td>
+                <td>{{ issue.issue_date }}</td>
+                <td>{{ issue.expiration_date }}</td>
+                <td>{{ issue.item_lifespan }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="2">Нет выданных предметов.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <a href="{% url 'core:create_issue' employee_id=employee.id %}" class="btn btn-primary">Выдать новый предмет</a>
+      </div>
+    </article>
+  </div>
 {% endblock %}

@@ -1,63 +1,118 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block title %}Выдача СИЗ{% endblock %}
+
 {% block content %}
-<!-- Внутри блока content -->
-<pre>Доступные СИЗ: {{ form.item.queryset|length }}</pre>
-{% for item in form.item.queryset %}
-  <div>{{ item }} ({{ item.ppe_type }})</div>
-{% empty %}
-  <div class="alert alert-danger">Нет доступных СИЗ!</div>
-{% endfor %}
-<div class="container mt-4">
-    <h2>Выдача СИЗ для {{ employee }}</h2>
-    <div class="card shadow">
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-7 p-5">
+      <div class="card">
+        <div class="card-header text-center">Выдача СИЗ для {{ employee }}</div> <!-- Центрируем заголовок -->
         <div class="card-body">
-            <form method="post">
-                {% csrf_token %}
-                
-                <!-- Поле выбора СИЗ -->
-                <div class="mb-4">
-                    <label class="form-label fw-bold">{{ form.item.label }}</label>
-                    {{ form.item }}
-                    {% if form.item.help_text %}
-                    <div class="form-text">{{ form.item.help_text }}</div>
-                    {% endif %}
+          {% if form.errors %}
+            {% for field in form %}
+              {% for error in field.errors %}
+                <div class="alert alert-danger">
+                  {{ error|escape }}
                 </div>
+              {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+              <div class="alert alert-danger">
+                {{ error|escape }}
+              </div>
+            {% endfor %}
+          {% endif %}
 
-                <!-- Даты выдачи и срока годности -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">{{ form.issue_date.label }}</label>
-                            {{ form.issue_date }}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">{{ form.expiration_date.label }}</label>
-                            {{ form.expiration_date }}
-                        </div>
-                    </div>
-                </div>
+          <form method="post">
+            {% csrf_token %}
 
-                <!-- Количество -->
-                <div class="mb-4">
-                    <label class="form-label fw-bold">{{ form.quantity.label }}</label>
-                    {{ form.quantity }}
-                    <div class="form-text">{{ form.quantity.help_text }}</div>
-                </div>
+            <!-- Поле выбора СИЗ -->
+            <div class="form-group row my-3">
+              <label for="{{ form.ppe_type.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.ppe_type.label }}
+                {% if form.ppe_type.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.ppe_type}}
+                {% if form.ppe_type.help_text %}
+                  <small id="{{ form.ppe_type.id_for_label }}-help" class="form-text text-muted">
+                    {{ form.ppe_type.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
 
-                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-save me-2"></i>Сохранить
-                    </button>
-                    <a href="{% url 'core:employee_detail' employee.id %}" class="btn btn-secondary">
-                        Отмена
-                    </a>
-                </div>
-            </form>
+            <!-- Поле для размера -->
+            <div class="form-group row my-3">
+              <label for="{{ form.item_size.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.item_size.label }}
+                {% if form.item_size.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.item_size}}
+                {% if form.item_size.help_text %}
+                  <small id="{{ form.item_size.id_for_label }}-help" class="form-text text-muted">
+                    {{ form.item_size.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Дата выдачи -->
+            <div class="form-group row my-3">
+              <label for="{{ form.issue_date.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.issue_date.label }}
+                {% if form.issue_date.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.issue_date}}
+                {% if form.issue_date.help_text %}
+                  <small id="{{ form.issue_date.id_for_label }}-help" class="form-text text-muted">
+                    {{ form.issue_date.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Количество -->
+            <div class="form-group row my-3">
+              <label for="{{ form.quantity.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.quantity.label }}
+                {% if form.quantity.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.quantity}}
+                {% if form.quantity.help_text %}
+                  <small id="{{ form.quantity.id_for_label }}-help" class="form-text text-muted">
+                    {{ form.quantity.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Кнопки -->
+            <div class="d-flex justify-content-center">
+              <button type="submit" class="btn btn-primary me-2">
+                Сохранить
+              </button>
+              <a href="{% url 'core:employee_detail' employee.id %}" class="btn btn-secondary">
+                Отмена
+              </a>
+            </div>
+          </form>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 {% endblock %}

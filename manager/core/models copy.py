@@ -2,15 +2,6 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
 
-
-MEASUREMENT_UNITS = (
-    ("шт.", "штук"),
-    ("пар.", "пар"),
-    ("компл.", "комплектов"),
-    ("г.", "грамм"),
-    ("мл.", "миллилитров"),
-)
-
 class Position(models.Model):
     position_name = models.CharField(
         "Название должности",
@@ -213,12 +204,6 @@ class PPEType(models.Model):
         unique=True,
         help_text="Укажите тип средства индивидуальной защиты"
     )
-    default_mu = models.CharField(
-        "Единица измерения",
-        max_length=10,
-        choices=MEASUREMENT_UNITS,  # Используем константы из Issue
-        default="шт."
-    )
     
     class Meta:
         verbose_name = "Тип СИЗ"
@@ -227,6 +212,47 @@ class PPEType(models.Model):
 
     def __str__(self):
         return self.name
+
+class Item(models.Model):
+    MEASUREMENT_UNITS = (
+        ("шт.", "штук"),
+        ("пар.", "пар"),
+        ("компл.", "комплектов"),
+        ("г.", "грамм"),
+        ("мл.", "миллилитров"),
+    )
+    ppe_type = models.ForeignKey(
+        PPEType,
+        on_delete=models.CASCADE,
+        related_name='items',
+        verbose_name="Тип СИЗ"
+    )
+    item_name = models.CharField(
+        "Наименование",
+        max_length=250,
+        help_text="Наименование СИЗ, предмета"
+    )
+    item_lifespan = models.PositiveIntegerField(
+        "Срок годности (в месяцах)",
+        help_text="Срок годности (в месяцах)"
+    )
+    item_size = models.CharField(
+        "Размер",
+        max_length=100,
+    )
+    item_mu = models.CharField(
+        "Единица измерения",
+        max_length=10,
+        choices=MEASUREMENT_UNITS,
+        default="шт."
+    )
+    
+    class Meta:
+        verbose_name = "СИЗ"
+        verbose_name_plural = "СИЗ"
+    
+    def __str__(self):
+        return f"{self.item_name}, ({self.get_item_mu_display()})"
 
 class Norm(models.Model):
     position = models.ForeignKey(
@@ -243,10 +269,6 @@ class Norm(models.Model):
         "Количество",
         help_text="Сколько единиц СИЗ положено для этой должности"
     )
-    lifespan = models.PositiveIntegerField(  # Новое поле
-        "Срок годности (месяцев)",
-        default=12
-    )
 
     class Meta:
         unique_together = ['position', 'ppe_type']
@@ -254,23 +276,24 @@ class Norm(models.Model):
         verbose_name_plural = "Нормы выдачи"
     
     def __str__(self):
-        return f"{self.position}: {self.ppe_type} x{self.quantity}"
+        return f"{self.position}: {self.item_type} x{self.quantity}"
+
 
 class Issue(models.Model):
     employee = models.ForeignKey(
-        Employee,
+        Employee, 
         on_delete=models.CASCADE,
         verbose_name="Сотрудник",
         related_name='issues'
     )
-    ppe_type = models.ForeignKey(
-        PPEType,
+    item = models.ForeignKey(
+        Item,
         on_delete=models.CASCADE,
-        verbose_name="Тип СИЗ",
-        related_name='issues'
+        related_name='issues',
+        verbose_name="СИЗ"
     )
     issue_date = models.DateField(
-        "Дата выдачи"
+        "Дата выдачи",
     )
     expiration_date = models.DateField(
         "Срок годности",
@@ -281,30 +304,11 @@ class Issue(models.Model):
         "Активно",
         default=True
     )
-    
-    # Поля из модели Item
-    item_lifespan = models.PositiveIntegerField(
-        "Срок годности (в месяцах)",
-        help_text="Срок годности (в месяцах)"
-    )
-    item_size = models.CharField(
-        "Размер",
-        max_length=100,
-        blank=True,
-        null=True,
-        help_text="Укажите размер если есть (например, 42, L, 10.5)"
-    )
-    item_mu = models.CharField(
-        "Единица измерения",
-        max_length=10,
-        choices=MEASUREMENT_UNITS,
-        default="шт."
-    )
 
     def save(self, *args, **kwargs):
-        if not self.expiration_date and self.item_lifespan:
-            self.expiration_date = self.issue_date + relativedelta(months=self.item_lifespan)
+        if not self.expiration_date and self.item.item_lifespan:
+            self.expiration_date = self.issue_date + relativedelta(months=self.item.item_lifespan)
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.employee} - {self.ppe_type} ({self.issue_date})"
+        return f"{self.employee} - {self.item} ({self.issue_date})"
