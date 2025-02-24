@@ -2,6 +2,15 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
 
+
+MEASUREMENT_UNITS = (
+    ("шт.", "штук"),
+    ("пар.", "пар"),
+    ("компл.", "комплектов"),
+    ("г.", "грамм"),
+    ("мл.", "миллилитров"),
+)
+
 class Position(models.Model):
     position_name = models.CharField(
         "Название должности",
@@ -197,26 +206,92 @@ class Employee(models.Model):
             "to_issue": items_to_add
         }
 
-class Item(models.Model):
-    MEASUREMENT_UNITS = (
-        ("шт.", "штук"),
-        ("пар.", "пар"),
-        ("компл.", "комплектов"),
-        ("г.", "грамм"),
-        ("мл.", "миллилитров"),
+class PPEType(models.Model):
+    name = models.CharField(
+        "Тип СИЗ",
+        max_length=255,
+        unique=True,
+        help_text="Укажите тип средства индивидуальной защиты"
+    )
+    default_mu = models.CharField(
+        "Единица измерения",
+        max_length=10,
+        choices=MEASUREMENT_UNITS,  # Используем константы из Issue
+        default="шт."
+    )
+    
+    class Meta:
+        verbose_name = "Тип СИЗ"
+        verbose_name_plural = "Типы СИЗ"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+class Norm(models.Model):
+    position = models.ForeignKey(
+        Position,
+        on_delete=models.CASCADE,
+        related_name='norms'
+    )
+    ppe_type = models.ForeignKey(
+        PPEType,
+        on_delete=models.CASCADE,
+        related_name='norms'
+    )
+    quantity = models.PositiveIntegerField(
+        "Количество",
+        help_text="Сколько единиц СИЗ положено для этой должности"
+    )
+    lifespan = models.PositiveIntegerField(  # Новое поле
+        "Срок годности (месяцев)",
+        default=12
+    )
+
+    class Meta:
+        unique_together = ['position', 'ppe_type']
+        verbose_name = "Норма выдачи"
+        verbose_name_plural = "Нормы выдачи"
+    
+    def __str__(self):
+        return f"{self.position}: {self.ppe_type} x{self.quantity}"
+
+class Issue(models.Model):
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        verbose_name="Сотрудник",
+        related_name='issues'
+    )
+    ppe_type = models.ForeignKey(
+        PPEType,
+        on_delete=models.CASCADE,
+        verbose_name="Тип СИЗ",
+        related_name='issues'
     )
     item_name = models.CharField(
-        "Наименование",
-        max_length=250,
-        help_text="Наименование СИЗ, предмета"
+        "Наименование предмета",
+        max_length=255,
+        help_text="Наименование предмета СИЗ"
     )
-    item_lifespan = models.PositiveIntegerField(
-        "Срок годности (в месяцах)",
-        help_text="Срок годности (в месяцах)"
+    issue_date = models.DateField(
+        "Дата выдачи"
+    )
+    expiration_date = models.DateField(
+        "Срок годности",
+        blank=True,
+        null=True
+    )
+    is_active = models.BooleanField(
+        "Активно",
+        default=True
     )
     item_size = models.CharField(
         "Размер",
         max_length=100,
+        blank=True,
+        null=True,
+        help_text="Укажите размер если есть (например, 42, L, 10.5)"
     )
     item_mu = models.CharField(
         "Единица измерения",
@@ -224,127 +299,19 @@ class Item(models.Model):
         choices=MEASUREMENT_UNITS,
         default="шт."
     )
-    
-    class Meta:
-        verbose_name = "СИЗ"
-        verbose_name_plural = "СИЗ"
-    
-    def __str__(self):
-        return f"{self.item_name}, ({self.get_item_mu_display()})"
 
-class Norm(models.Model):
-    position = models.ForeignKey(
-        Position,
-        on_delete=models.CASCADE,
-        verbose_name="Должность",
-        related_name="norms"
-    )
-    item_type = models.CharField(
-        "Тип СИЗ",
-        max_length=255,
-        help_text="Тип СИЗ (например, ботинки, перчатки)",
-        unique=True
-    )
-    quantity = models.PositiveIntegerField(
-        "Количество",
-        default=1,
-        help_text="Сколько единиц СИЗ положено для этой должности"
-    )
-
-    class Meta:
-        verbose_name = "Норма выдачи"
-        verbose_name_plural = "Нормы выдачи"
-    
-    def __str__(self):
-        return f"{self.position}: {self.item_type} x{self.quantity}"
-
-class Issue(models.Model):
-    employee = models.ForeignKey(
-        "Employee",
-        on_delete=models.CASCADE,
-        verbose_name="Сотрудник",
-        related_name="issues"
-    )
-    item_type = models.CharField(
-        "Тип СИЗ",
-        max_length=255,
-        help_text="Тип СИЗ (например, ботинки, перчатки)"
-    )
-    item = models.ForeignKey(
-        "Item",
-        on_delete=models.CASCADE,
-        verbose_name="СИЗ",
-        related_name="issues",
-        null=True,
-        blank=True
-    )
-    quantity = models.PositiveIntegerField(
-        "Количество",
-        default=1,
-        editable=False  # Запрещаем изменять вручную
-    )
-    issue_date = models.DateField(
-        "Дата выдачи",
-        blank=False,
-        null=False,
-        help_text="Дата выдачи СИЗ сотруднику"
-    )
-    expiration_date = models.DateField(
-        "Срок годности до",
-        blank=True,
-        help_text="Срок годности СИЗ"
-    )
-    is_active = models.BooleanField(
-        "Активно (не списано)",
-        default=True
-    )
-
-    class Meta:
-        verbose_name = "Выдача СИЗ"
-        verbose_name_plural = "Выдачи СИЗ"
-        ordering = ["-issue_date"]
-
-    def __str__(self):
-        status = "активно" if self.is_active else "списано"
-        return f"{self.employee}: {self.item_type} ({status})"
-
-    def clean(self):
-        """
-        Проверяет, не превышает ли выдача норму для должности.
-        """
-        if not self.is_active:
-            return
-        
-        if not self.employee:
-            raise ValidationError("Сотрудник не указан.")
-        
-        norm = Norm.objects.filter(
-            position=self.employee.position,
-            item_type=self.item_type
-        ).first()
-
-        if not norm:
-            raise ValidationError(
-                f"Для должности {self.employee.position} не задана норма по СИЗ {self.item_type}."
-            )
-        
-        active_issues = Issue.objects.filter(
-            employee=self.employee,
-            item_type=self.item_type,
-            is_active=True
-        ).exclude(pk=self.pk)
-
-        if active_issues.count() + 1 > norm.quantity:
-            raise ValidationError(
-                f"Превышена норма. Доступно к выдаче: {norm.quantity - active_issues.count()} ед."
-            )
-        
     def save(self, *args, **kwargs):
-        if not self.issue_date:
-            raise ValidationError("Поле 'Дата выдачи' обязательно для заполнения.")
-        
-        # if not self.expiration_date and self.item:
-        #     self.expiration_date = self.issue_date + relativedelta(months=self.item.item_lifespan)
-
-        self.clean()
+        # Пересчитываем срок годности только если он не задан вручную
+        if not self.expiration_date:
+            try:
+                norm = Norm.objects.get(
+                    position=self.employee.position,
+                    ppe_type=self.ppe_type
+                )
+                self.expiration_date = self.issue_date + relativedelta(months=norm.lifespan)
+            except Norm.DoesNotExist:
+                pass
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Работник: {self.employee}; Тип СИЗ: {self.ppe_type}; Название: {self.item_name}; Дата выдачи: {self.issue_date}"

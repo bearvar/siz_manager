@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Выдача СИЗ{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-7 p-5">
+      <div class="card">
+        <div class="card-header text-center">Выдача СИЗ для {{ employee }}</div> <!-- Центрируем заголовок -->
+        <div class="card-body">
+          {% if form.errors %}
+            {% for field in form %}
+              {% for error in field.errors %}
+                <div class="alert alert-danger">
+                  {{ error|escape }}
+                </div>
+              {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+              <div class="alert alert-danger">
+                {{ error|escape }}
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <form method="post">
+            {% csrf_token %}
+
+            <!-- Поле выбора СИЗ -->
+            <div class="form-group row my-3">
+              <label for="{{ form.ppe_type.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.ppe_type.label }}
+                {% if form.ppe_type.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.ppe_type}}
+                {% if form.ppe_type.help_text %}
+                  <small id="{{ form.ppe_type.id_for_label }}-help" class="form-text text-muted">
+                    {{ form.ppe_type.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Поле наименования предмета -->
+            <div class="form-group row my-3">
+              <label for="{{ form.item_name.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.item_name.label }}
+                {% if form.item_name.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.item_name }}
+                {% if form.item_name.help_text %}
+                  <small id="{{ form.item_name.id_for_label }}-help" class="form-text text-muted">
+                    {{ form.item_name.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Поле для размера -->
+            <div class="form-group row my-3">
+              <label for="{{ form.item_size.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.item_size.label }}
+                {% if form.item_size.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.item_size}}
+                {% if form.item_size.help_text %}
+                  <small id="{{ form.item_size.id_for_label }}-help" class="form-text text-muted">
+                    {{ form.item_size.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Дата выдачи -->
+            <div class="form-group row my-3">
+              <label for="{{ form.issue_date.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.issue_date.label }}
+                {% if form.issue_date.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.issue_date}}
+                {% if form.issue_date.help_text %}
+                  <small id="{{ form.issue_date.id_for_label }}-help" class="form-text text-muted">
+                    {{ form.issue_date.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Количество -->
+            <div class="form-group row my-3">
+              <label for="{{ form.quantity.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.quantity.label }}
+                {% if form.quantity.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.quantity}}
+                {% if form.quantity.help_text %}
+                  <small id="{{ form.quantity.id_for_label }}-help" class="form-text text-muted">
+                    {{ form.quantity.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Кнопки -->
+            <div class="d-flex justify-content-center">
+              <button type="submit" class="btn btn-primary me-2">
+                Сохранить
+              </button>
+              <a href="{% url 'core:employee_detail' employee.id %}" class="btn btn-secondary">
+                Отмена
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
