@@ -163,48 +163,6 @@ class Employee(models.Model):
     def __str__(self):
         return f"{self.last_name} {self.first_name} {self.patronymic}".strip()
 
-    # Логика не финальная
-    def get_position_change_report(self, new_position):
-        """
-        Возвращает отчет о необходимых изменениях при переводе на новую должность.
-        Формат:
-        {
-            "to_remove": {item: количество_к_списанию},
-            "to_issue": {item: количество_к_выдаче}
-        }
-        """
-        # Текущие активные выдачи сотрудника
-        current_issues = self.issues.filter(is_active=True)
-        
-        # Нормы для новой должности
-        new_norms = Norm.objects.filter(position=new_position)
-        
-        # СИЗ, которые должны быть у сотрудника по новой должности
-        required_items = {norm.item: norm.quantity for norm in new_norms}
-        
-        # СИЗ, которые есть у сотрудника сейчас
-        current_items = {}
-        for issue in current_issues:
-            current_items[issue.item] = current_items.get(issue.item, 0) + 1
-        
-        # Определяем избыточные СИЗ
-        items_to_remove = {}
-        for item, count in current_items.items():
-            required_count = required_items.get(item, 0)
-            if count > required_count:
-                items_to_remove[item] = count - required_count
-        
-        # Определяем недостающие СИЗ
-        items_to_add = {}
-        for item, required_count in required_items.items():
-            current_count = current_items.get(item, 0)
-            if required_count > current_count:
-                items_to_add[item] = required_count - current_count
-        
-        return {
-            "to_remove": items_to_remove,
-            "to_issue": items_to_add
-        }
 
 class PPEType(models.Model):
     name = models.CharField(
@@ -255,6 +213,13 @@ class Norm(models.Model):
     
     def __str__(self):
         return f"{self.position}: {self.ppe_type} x{self.quantity}"
+    
+    def active_issues(self, employee):
+        return Issue.objects.filter(
+            employee=employee,
+            ppe_type=self.ppe_type,
+            is_active=True
+        )
 
 class Issue(models.Model):
     employee = models.ForeignKey(

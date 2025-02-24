@@ -24,6 +24,7 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from .models import Norm, Position
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -132,13 +133,77 @@ def employee_list(request):
     employees = Employee.objects.all()
     return render(request, 'core/employee_list.html', {'employees': employees})
 
-from django.shortcuts import get_object_or_404, render
 
-@login_required
+from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
+from datetime import date
+from django.db.models import Q
+from .models import Employee, Issue, Norm
+import logging
+
+logger = logging.getLogger(__name__)
+
 def employee_detail(request, employee_id):
+    # logger.debug("=== Начало обработки запроса ===")
+    
+    # Получаем сотрудника
     employee = get_object_or_404(Employee, pk=employee_id)
-    issues = Issue.objects.filter(employee=employee)
-    return render(request, 'core/employee_detail.html', {'employee': employee, 'issues': issues})
+    # logger.debug(f"Сотрудник: {employee}, Должность: {employee.position}")
+    
+    # Получаем все выдачи сотрудника
+    all_issues = Issue.objects.filter(employee=employee)  # Переименовано в all_issues
+    norms_status = []
+    
+    if employee.position:
+        # logger.debug("Обработка норм...")
+        today = date.today()
+        
+        # Получаем нормы для должности
+        norms = Norm.objects.filter(position=employee.position).select_related('ppe_type')
+        # logger.debug(f"Найдено норм: {norms.count()}")
+        
+        for norm in norms:
+            # logger.debug(f"Обработка: {norm.ppe_type.name}")
+            
+            # Фильтруем выдачи по типу СИЗ
+            ppe_issues = all_issues.filter(  # Используем all_issues вместо issues
+                ppe_type=norm.ppe_type,
+                is_active=True
+            )
+            
+            # Рассчитываем статусы
+            valid_count = ppe_issues.filter(
+                Q(expiration_date__gte=today) | 
+                Q(expiration_date__isnull=True)
+            ).count()
+            
+            expired_exists = ppe_issues.filter(
+                expiration_date__lt=today
+            ).exists()
+            
+            # Формируем статус
+            status = []
+            if expired_exists:
+                status.append("Просрочено")
+            if valid_count < norm.quantity:
+                status.append(f"Не хватает ({valid_count}/{norm.quantity})")
+                
+            norms_status.append({
+                'ppe_type': norm.ppe_type.name,
+                'required': norm.quantity,
+                'actual': valid_count,
+                'status': " | ".join(status) if status else "В норме"
+            })
+    
+    # logger.debug(f"Результат: {norms_status}")
+    # logger.debug("=== Обработка завершена ===")
+    
+    context = {
+        'employee': employee,
+        'issues': all_issues,
+        'norms_status': norms_status
+    }
+    return render(request, 'core/employee_detail.html', context)
 
 
 @login_required
