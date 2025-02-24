@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Добавить норму выдачи{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 p-5">
+      <div class="card">
+        <div class="card-header">Добавить норму выдачи</div>
+        <div class="card-body">
+          {% if form.errors %}
+            {% for field in form %} 
+              {% for error in field.errors %}            
+                <div class="alert alert-danger">{{ error|escape }}</div>
+              {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+              <div class="alert alert-danger">{{ error|escape }}</div>
+            {% endfor %}
+          {% endif %}
+
+          <form method="post">                    
+            {% csrf_token %}
+
+            <!-- Поле для ввода нового типа -->
+            <div class="form-group mb-4">
+              <label for="{{ form.new_ppe_type.id_for_label }}">Наименование СИЗ</label>
+              {{ form.new_ppe_type }}
+              <small class="form-text text-muted">
+                Пример: "Защитные очки", "Костюм термостойкий"
+              </small>
+            </div>
+
+            <!-- Поле для количества -->
+            <div class="form-group mb-4">
+              <label for="{{ form.quantity.id_for_label }}">Количество</label>
+              {{ form.quantity }}
+              <small class="form-text text-muted">
+                Укажите количество
+              </small>
+            </div>
+
+            <!-- Поле для срока годности -->
+            <div class="form-group mb-4">
+              <label for="{{ form.lifespan.id_for_label }}">Срок годности</label>
+              {{ form.lifespan }}
+              <small class="form-text text-muted">
+                Укажите срок использования в месяцах (пример: 12, 24)
+              </small>
+            </div>
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary">Сохранить</button>
+              <a href="{% url 'core:position_detail' position.id %}" class="btn btn-secondary">Отмена</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
