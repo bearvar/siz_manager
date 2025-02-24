@@ -33,11 +33,11 @@
             <!-- Строки с данными -->
             {% for issue in issues %}
               <div class="flex-row {% if issue.expiration_date < current_date %}table-danger{% endif %}">
-                <div class="col-3">{{ issue.item.item_name }}</div>
-                <div class="col-2">{{ issue.item.item_type }}</div>
+                <div class="col-3">{{ issue.ppe_type.item_name }}</div>
+                <div class="col-2">{{ issue.ppe_type.item_type }}</div>
                 <div class="col-2">{{ issue.issue_date|date:"d.m.Y" }}</div>
                 <div class="col-2">{{ issue.expiration_date|date:"d.m.Y" }}</div>
-                <div class="col-1">{{ issue.item.get_item_mu_display }}</div>
+                <div class="col-1">{{ issue.ppe_type.get_item_mu_display }}</div>
                 <div class="col-2">
                   {% if issue.is_active %}
                     <span class="text-success">Активно</span>
