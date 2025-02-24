@@ -18,12 +18,6 @@ from django.urls import reverse
 from django.http import JsonResponse
 
 
-from django.shortcuts import get_object_or_404, redirect, render
-from django.contrib import messages
-from django.views.decorators.http import require_http_methods
-from django.contrib.auth.decorators import login_required
-from .models import Norm, Position
-
 logger = logging.getLogger(__name__)
 
 
@@ -140,6 +134,11 @@ def employee_detail(request, employee_id):
     issues = Issue.objects.filter(employee=employee)
     return render(request, 'core/employee_detail.html', {'employee': employee, 'issues': issues})
 
+from django.shortcuts import get_object_or_404, redirect, render
+from django.contrib import messages
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from .models import Norm, Position
 
 @login_required
 def norm_edit(request, position_id):
@@ -230,95 +229,3 @@ def create_issue(request, employee_id):
         'form': form,
         'employee': employee
     })
-
-@login_required
-def issue_edit(request, employee_id):
-    employee = get_object_or_404(Employee, pk=employee_id)
-    issues = Issue.objects.filter(employee=employee).select_related('ppe_type')
-    
-    # Определяем варианты размеров для каждого issue
-    for issue in issues:
-        ppe_name = issue.ppe_type.name.lower()
-        size_choices = []
-        
-        # Определение размеров по типу СИЗ
-        if any(x in ppe_name for x in {'обувь', 'сапоги', 'ботинки'}):
-            size_choices = Employee.SHOE_SIZE_CHOICES
-        elif any(x in ppe_name for x in {'костюм', 'комбинезон', 'куртка', 'брюки'}):
-            size_choices = Employee.BODY_SIZE_CHOICES
-        elif any(x in ppe_name for x in {'каска', 'шлем', 'кепка', 'шапка'}):
-            size_choices = Employee.HEAD_SIZE_CHOICES
-        elif any(x in ppe_name for x in {'перчатки', 'рукавицы'}):
-            size_choices = [(str(s[0]), str(s[0])) for s in Employee.GLOVE_SIZE_CHOICES]
-        
-        # Сохраняем варианты в объект
-        issue.size_choices = size_choices or None
-
-    return render(request, 'core/edit_issues.html', {
-        'employee': employee,
-        'issues': issues,
-    })
-
-@login_required
-@require_http_methods(["POST"])
-def issue_update(request, issue_id):
-    issue = get_object_or_404(Issue.objects.select_related('employee', 'ppe_type'), pk=issue_id)
-    employee_id = issue.employee.id
-    
-    try:
-        # Получаем сырые данные из формы
-        item_size = request.POST.get('item_size')
-        issue_date_str = request.POST.get('issue_date')
-        expiration_date_str = request.POST.get('expiration_date')
-        
-        # Валидация обязательных полей
-        if not issue_date_str:
-            raise ValueError("Дата выдачи обязательна для заполнения")
-        
-        # Преобразование дат
-        issue_date = datetime.strptime(issue_date_str, '%Y-%m-%d').date()
-        expiration_date = datetime.strptime(expiration_date_str, '%Y-%m-%d').date() if expiration_date_str else None
-        
-        # Обновляем объект
-        issue.item_size = item_size or None
-        issue.issue_date = issue_date
-        issue.expiration_date = expiration_date
-        
-        # Если срок годности не указан - пересчитываем
-        if not expiration_date:
-            try:
-                norm = Norm.objects.get(
-                    position=issue.employee.position,
-                    ppe_type=issue.ppe_type
-                )
-                issue.expiration_date = issue.issue_date + relativedelta(months=norm.lifespan)
-            except Norm.DoesNotExist:
-                issue.expiration_date = None
-        
-        # Сохраняем изменения
-        issue.save()
-        
-        messages.success(request, "Изменения успешно сохранены")
-    except ValueError as ve:
-        logger.error(f"Value error in issue_update: {str(ve)}")
-        messages.error(request, f"Ошибка в данных: {str(ve)}")
-    except Exception as e:
-        logger.error(f"Error updating issue {issue_id}: {str(e)}")
-        messages.error(request, f"Ошибка сохранения: {str(e)}")
-    
-    return redirect('core:edit_issues', employee_id=employee_id)
-
-
-@login_required
-@require_http_methods(["POST"])
-def issue_delete(request, issue_id):
-    issue = get_object_or_404(Issue.objects.select_related('employee'), pk=issue_id)
-    employee_id = issue.employee.id
-    try:
-        issue.delete()
-        messages.success(request, "Выдача успешно удалена")
-    except Exception as e:
-        logger.error(f"Error deleting issue: {e}")
-        messages.error(request, f"Ошибка удаления: {str(e)}")
-    
-    return redirect('core:edit_issues', employee_id=employee_id)

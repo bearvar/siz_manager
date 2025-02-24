@@ -46,6 +46,24 @@
               </div>
             </div>
 
+            <!-- Поле наименования предмета -->
+            <div class="form-group row my-3">
+              <label for="{{ form.item_name.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.item_name.label }}
+                {% if form.item_name.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.item_name }}
+                {% if form.item_name.help_text %}
+                  <small id="{{ form.item_name.id_for_label }}-help" class="form-text text-muted">
+                    {{ form.item_name.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
             <!-- Поле для размера -->
             <div class="form-group row my-3">
               <label for="{{ form.item_size.id_for_label }}" class="col-form-label col-md-4">

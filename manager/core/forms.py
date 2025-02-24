@@ -96,10 +96,15 @@ class IssueCreateForm(forms.ModelForm):
         required=False,
         help_text="Укажите размер (например, 42, L, 10.5)"
     )
+    item_name = forms.CharField(
+        label="Наименование предмета",
+        max_length=255,
+        help_text="Наименование СИЗ"
+    )
 
     class Meta:
         model = Issue
-        fields = ['ppe_type', 'issue_date', 'item_size']
+        fields = ['ppe_type', 'item_name', 'issue_date', 'item_size']
         widgets = {
             'issue_date': forms.DateInput(attrs={'type': 'date'}),
         }

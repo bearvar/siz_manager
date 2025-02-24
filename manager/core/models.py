@@ -269,6 +269,11 @@ class Issue(models.Model):
         verbose_name="Тип СИЗ",
         related_name='issues'
     )
+    item_name = models.CharField(
+        "Наименование предмета",
+        max_length=255,
+        help_text="Наименование предмета СИЗ"
+    )
     issue_date = models.DateField(
         "Дата выдачи"
     )
@@ -295,7 +300,9 @@ class Issue(models.Model):
         default="шт."
     )
 
-    def save(self, *args, **kwargs):
+def save(self, *args, **kwargs):
+    # Пересчитываем срок годности только если он не задан вручную
+    if not self.expiration_date:
         try:
             norm = Norm.objects.get(
                 position=self.employee.position,
@@ -303,8 +310,8 @@ class Issue(models.Model):
             )
             self.expiration_date = self.issue_date + relativedelta(months=norm.lifespan)
         except Norm.DoesNotExist:
-            pass  # Обработайте ошибку по необходимости
-        super().save(*args, **kwargs)
+            pass
+    super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.employee} - {self.ppe_type} ({self.issue_date})"
+        return f"Работник: {self.employee}; Тип СИЗ: {self.ppe_type}; Название: {self.item_name}; Дата выдачи: {self.issue_date}"
