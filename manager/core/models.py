@@ -281,12 +281,6 @@ class Issue(models.Model):
         "Активно",
         default=True
     )
-    
-    # Поля из модели Item
-    item_lifespan = models.PositiveIntegerField(
-        "Срок годности (в месяцах)",
-        help_text="Срок годности (в месяцах)"
-    )
     item_size = models.CharField(
         "Размер",
         max_length=100,
@@ -302,8 +296,14 @@ class Issue(models.Model):
     )
 
     def save(self, *args, **kwargs):
-        if not self.expiration_date and self.item_lifespan:
-            self.expiration_date = self.issue_date + relativedelta(months=self.item_lifespan)
+        try:
+            norm = Norm.objects.get(
+                position=self.employee.position,
+                ppe_type=self.ppe_type
+            )
+            self.expiration_date = self.issue_date + relativedelta(months=norm.lifespan)
+        except Norm.DoesNotExist:
+            pass  # Обработайте ошибку по необходимости
         super().save(*args, **kwargs)
 
     def __str__(self):

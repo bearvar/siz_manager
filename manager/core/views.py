@@ -157,12 +157,19 @@ def norm_update(request, norm_id):
     try:
         norm = Norm.objects.select_related('position').get(pk=norm_id)
         quantity = int(request.POST.get('quantity', 0))
+        lifespan = int(request.POST.get('lifespan', 0))
         
+        # Валидация данных
         if quantity < 1:
             raise ValueError("Количество должно быть положительным числом")
+        if lifespan < 1:
+            raise ValueError("Срок годности должен быть положительным числом")
             
+        # Обновление данных
         norm.quantity = quantity
+        norm.lifespan = lifespan
         norm.save()
+        
         messages.success(request, f"Норма для {norm.ppe_type.name} обновлена")
         
     except Norm.DoesNotExist:
@@ -204,15 +211,14 @@ def create_issue(request, employee_id):
             ppe_type = form.cleaned_data['ppe_type']
             norm = Norm.objects.get(position=employee.position, ppe_type=ppe_type)
             
-            # Создаем Issue без указания expiration_date
+            # Создаем Issue без явного указания lifespan
             for _ in range(form.cleaned_data['quantity']):
                 Issue.objects.create(
                     employee=employee,
                     ppe_type=ppe_type,
                     issue_date=form.cleaned_data['issue_date'],
-                    item_lifespan=norm.lifespan,  # Срок из нормы
-                    item_size=form.cleaned_data['item_size'],  # Размер из формы
-                    item_mu=ppe_type.default_mu  # Единица измерения из PPEType
+                    item_size=form.cleaned_data['item_size'],
+                    item_mu=ppe_type.default_mu
                 )
             return redirect('core:employee_detail', employee_id=employee.id)
     else:

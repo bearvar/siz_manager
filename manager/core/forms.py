@@ -28,10 +28,11 @@ class NormCreateForm(forms.ModelForm):
 
     class Meta:
         model = Norm
-        fields = ['ppe_type', 'quantity']
+        fields = ['ppe_type', 'quantity', 'lifespan']
         labels = {
             'ppe_type': 'Существующий тип СИЗ',
-            'quantity': 'Количество'
+            'quantity': 'Количество',
+            'lifespan': 'Срок годности (месяцев)',
         }
 
     def __init__(self, *args, **kwargs):
@@ -98,7 +99,7 @@ class IssueCreateForm(forms.ModelForm):
 
     class Meta:
         model = Issue
-        fields = ['ppe_type', 'issue_date', 'item_size']  # Убрали expiration_date
+        fields = ['ppe_type', 'issue_date', 'item_size']
         widgets = {
             'issue_date': forms.DateInput(attrs={'type': 'date'}),
         }

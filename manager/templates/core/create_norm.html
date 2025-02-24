@@ -21,22 +21,13 @@
 
           <form method="post">                    
             {% csrf_token %}
-            
-            <!-- Поле для выбора существующего типа -->
-            <div class="form-group mb-4">
-              <label for="{{ form.ppe_type.id_for_label }}">Выберите существующий тип СИЗ</label>
-              {{ form.ppe_type }}
-              <small class="form-text text-muted">
-                Выберите из списка уже зарегистрированных типов
-              </small>
-            </div>
 
             <!-- Поле для ввода нового типа -->
             <div class="form-group mb-4">
-              <label for="{{ form.new_ppe_type.id_for_label }}">Или введите новый тип</label>
+              <label for="{{ form.new_ppe_type.id_for_label }}">Наименование СИЗ</label>
               {{ form.new_ppe_type }}
               <small class="form-text text-muted">
-                Пример: "Защитные очки", "Респиратор FFP2"
+                Пример: "Защитные очки", "Костюм термостойкий"
               </small>
             </div>
 
@@ -45,7 +36,16 @@
               <label for="{{ form.quantity.id_for_label }}">Количество</label>
               {{ form.quantity }}
               <small class="form-text text-muted">
-                Укажите количество для ежемесячной/ежегодной выдачи
+                Укажите количество
+              </small>
+            </div>
+
+            <!-- Поле для срока годности -->
+            <div class="form-group mb-4">
+              <label for="{{ form.lifespan.id_for_label }}">Срок годности</label>
+              {{ form.lifespan }}
+              <small class="form-text text-muted">
+                Укажите срок использования в месяцах (пример: 12, 24)
               </small>
             </div>
 

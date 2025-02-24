@@ -55,7 +55,6 @@
               <th>Единица измерения</th>
               <th>Дата выдачи</th>
               <th>Дата списания</th>
-              <th>Срок годности (мес.)</th>
             </tr>
           </thead>
           <tbody>
@@ -66,7 +65,6 @@
                 <td>{{ issue.get_item_mu_display }}</td>
                 <td>{{ issue.issue_date }}</td>
                 <td>{{ issue.expiration_date }}</td>
-                <td>{{ issue.item_lifespan }}</td>
               </tr>
             {% empty %}
               <tr>

@@ -10,10 +10,11 @@
   <a href="{% url 'core:position_detail' position.id %}" class="btn btn-secondary mb-3">← Назад</a>
   
   <table class="table table-striped">
-    <thead class="thead-dark">
+    <thead>
       <tr>
         <th>Тип СИЗ</th>
         <th>Количество</th>
+        <th>Срок годности (мес.)</th>  <!-- Новая колонка -->
         <th>Действия</th>
       </tr>
     </thead>
@@ -35,6 +36,18 @@
                 </div>
               </div>
           </td>
+          <td>  <!-- Новое поле для срока годности -->
+              <div class="input-group">
+                <input type="number" 
+                       name="lifespan" 
+                       value="{{ norm.lifespan }}" 
+                       class="form-control form-control-sm"
+                       min="1">
+                <div class="input-group-append">
+                  <span class="input-group-text">мес.</span>
+                </div>
+              </div>
+          </td>
           <td class="d-flex gap-2">
               <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
             </form>
@@ -46,7 +59,7 @@
         </tr>
       {% empty %}
         <tr>
-          <td colspan="3" class="text-center">Нормы не добавлены</td>
+          <td colspan="4" class="text-center">Нормы не добавлены</td>  <!-- Обновлено colspan -->
         </tr>
       {% endfor %}
     </tbody>
