@@ -28,22 +28,11 @@
           <td>
             <form method="post" action="{% url 'core:issue_update' issue_id=issue.id %}">
               {% csrf_token %}
-              {% if issue.size_choices %}
-                <select name="item_size" class="form-select form-select-sm">
-                  <option value="">Не указан</option>
-                  {% for value, label in issue.size_choices %}
-                    <option value="{{ value }}" 
-                      {% if issue.item_size == value|stringformat:"s" %}selected{% endif %}>
-                      {{ label }}
-                    </option>
-                  {% endfor %}
-                </select>
-              {% else %}
-                <input type="text" 
-                       name="item_size" 
-                       value="{{ issue.item_size|default_if_none:'' }}" 
-                       class="form-control form-control-sm">
-              {% endif %}
+              <input type="text" 
+                     name="item_size" 
+                     value="{{ issue.item_size|default_if_none:'' }}" 
+                     class="form-control form-control-sm"
+                     placeholder="Введите размер">
           </td>
           <td>
               <input type="date" 

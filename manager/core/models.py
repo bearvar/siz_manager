@@ -300,18 +300,18 @@ class Issue(models.Model):
         default="шт."
     )
 
-def save(self, *args, **kwargs):
-    # Пересчитываем срок годности только если он не задан вручную
-    if not self.expiration_date:
-        try:
-            norm = Norm.objects.get(
-                position=self.employee.position,
-                ppe_type=self.ppe_type
-            )
-            self.expiration_date = self.issue_date + relativedelta(months=norm.lifespan)
-        except Norm.DoesNotExist:
-            pass
-    super().save(*args, **kwargs)
+    def save(self, *args, **kwargs):
+        # Пересчитываем срок годности только если он не задан вручную
+        if not self.expiration_date:
+            try:
+                norm = Norm.objects.get(
+                    position=self.employee.position,
+                    ppe_type=self.ppe_type
+                )
+                self.expiration_date = self.issue_date + relativedelta(months=norm.lifespan)
+            except Norm.DoesNotExist:
+                pass
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Работник: {self.employee}; Тип СИЗ: {self.ppe_type}; Название: {self.item_name}; Дата выдачи: {self.issue_date}"

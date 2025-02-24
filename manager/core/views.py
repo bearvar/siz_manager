@@ -231,33 +231,16 @@ def create_issue(request, employee_id):
         'employee': employee
     })
 
+
 @login_required
 def issue_edit(request, employee_id):
     employee = get_object_or_404(Employee, pk=employee_id)
     issues = Issue.objects.filter(employee=employee).select_related('ppe_type')
-    
-    # Определяем варианты размеров для каждого issue
-    for issue in issues:
-        ppe_name = issue.ppe_type.name.lower()
-        size_choices = []
-        
-        # Определение размеров по типу СИЗ
-        if any(x in ppe_name for x in {'обувь', 'сапоги', 'ботинки'}):
-            size_choices = Employee.SHOE_SIZE_CHOICES
-        elif any(x in ppe_name for x in {'костюм', 'комбинезон', 'куртка', 'брюки'}):
-            size_choices = Employee.BODY_SIZE_CHOICES
-        elif any(x in ppe_name for x in {'каска', 'шлем', 'кепка', 'шапка'}):
-            size_choices = Employee.HEAD_SIZE_CHOICES
-        elif any(x in ppe_name for x in {'перчатки', 'рукавицы'}):
-            size_choices = [(str(s[0]), str(s[0])) for s in Employee.GLOVE_SIZE_CHOICES]
-        
-        # Сохраняем варианты в объект
-        issue.size_choices = size_choices or None
-
     return render(request, 'core/edit_issues.html', {
         'employee': employee,
         'issues': issues,
     })
+    
 
 @login_required
 @require_http_methods(["POST"])
@@ -266,34 +249,43 @@ def issue_update(request, issue_id):
     employee_id = issue.employee.id
     
     try:
-        # Получаем сырые данные из формы
-        item_size = request.POST.get('item_size')
+        # Получаем данные из формы
+        item_size = request.POST.get('item_size', '').strip() or None
         issue_date_str = request.POST.get('issue_date')
         expiration_date_str = request.POST.get('expiration_date')
-        
+
         # Валидация обязательных полей
         if not issue_date_str:
             raise ValueError("Дата выдачи обязательна для заполнения")
-        
-        # Преобразование дат
-        issue_date = datetime.strptime(issue_date_str, '%Y-%m-%d').date()
-        expiration_date = datetime.strptime(expiration_date_str, '%Y-%m-%d').date() if expiration_date_str else None
-        
+
+        # Парсим даты
+        new_issue_date = datetime.strptime(issue_date_str, '%Y-%m-%d').date()
+        new_expiration_date = (
+            datetime.strptime(expiration_date_str, '%Y-%m-%d').date() 
+            if expiration_date_str 
+            else None
+        )
+
+        # Сохраняем оригинальные значения для сравнения
+        original_issue_date = issue.issue_date
+        original_expiration_date = issue.expiration_date
+
+        # Логика пересчёта expiration_date
+        if not expiration_date_str or new_expiration_date == original_expiration_date:
+            if new_issue_date != original_issue_date:
+                try:
+                    norm = Norm.objects.get(
+                        position=issue.employee.position,
+                        ppe_type=issue.ppe_type
+                    )
+                    new_expiration_date = new_issue_date + relativedelta(months=norm.lifespan)
+                except Norm.DoesNotExist:
+                    pass  # Оставляем текущее значение или None
+
         # Обновляем объект
-        issue.item_size = item_size or None
-        issue.issue_date = issue_date
-        issue.expiration_date = expiration_date
-        
-        # Если срок годности не указан - пересчитываем
-        if not expiration_date:
-            try:
-                norm = Norm.objects.get(
-                    position=issue.employee.position,
-                    ppe_type=issue.ppe_type
-                )
-                issue.expiration_date = issue.issue_date + relativedelta(months=norm.lifespan)
-            except Norm.DoesNotExist:
-                issue.expiration_date = None
+        issue.item_size = item_size
+        issue.issue_date = new_issue_date
+        issue.expiration_date = new_expiration_date
         
         # Сохраняем изменения
         issue.save()
@@ -322,3 +314,49 @@ def issue_delete(request, issue_id):
         messages.error(request, f"Ошибка удаления: {str(e)}")
     
     return redirect('core:edit_issues', employee_id=employee_id)
+
+
+@login_required
+def edit_employee(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    
+    if request.method == 'POST':
+        try:
+            # Обновляем основные поля
+            employee.first_name = request.POST['first_name']
+            employee.last_name = request.POST['last_name']
+            employee.patronymic = request.POST.get('patronymic', '')
+            employee.department = request.POST.get('department', '')
+            
+            # Обработка должности
+            position_id = request.POST.get('position')
+            if position_id:
+                employee.position = Position.objects.get(pk=position_id)
+            else:
+                employee.position = None
+            
+            # Обработка размеров
+            employee.body_size = request.POST.get('body_size')
+            employee.head_size = request.POST.get('head_size')
+            employee.glove_size = request.POST.get('glove_size')
+            shoe_size = request.POST.get('shoe_size')
+            employee.shoe_size = int(shoe_size) if shoe_size else None
+            
+            employee.save()
+            messages.success(request, "Данные сотрудника обновлены")
+            return redirect('core:employee_detail', employee_id=employee.id)
+            
+        except Exception as e:
+            logger.error(f"Error updating employee: {str(e)}")
+            messages.error(request, f"Ошибка обновления: {str(e)}")
+    
+    # Контекст для GET-запроса
+    context = {
+        'employee': employee,
+        'positions': Position.objects.all(),
+        'body_size_choices': Employee.BODY_SIZE_CHOICES,
+        'head_size_choices': Employee.HEAD_SIZE_CHOICES,
+        'glove_size_choices': Employee.GLOVE_SIZE_CHOICES,
+        'shoe_size_choices': Employee.SHOE_SIZE_CHOICES,
+    }
+    return render(request, 'core/edit_employee.html', context)

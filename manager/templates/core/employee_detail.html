@@ -74,8 +74,9 @@
           </tbody>
         </table>
 
-        <a href="{% url 'core:create_issue' employee_id=employee.id %}" class="btn btn-primary">Выдать новый предмет</a>
+        <a href="{% url 'core:create_issue' employee_id=employee.id %}" class="btn btn-secondary">Выдать новый предмет</a>
         <a href="{% url 'core:edit_issues' employee_id=employee.id %}" class="btn btn-secondary">Редактировать предметы</a>
+        <a href="{% url 'core:edit_employee' employee_id=employee.id %}" class="btn btn-secondary">Редактировать сотрудника</a>
       </div>
     </article>
   </div>
