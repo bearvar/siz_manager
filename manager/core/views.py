@@ -55,16 +55,6 @@ def position_list(request):
 
 
 @login_required
-def list_items(request, employee_id):
-    employee = get_object_or_404(Employee, pk=employee_id)
-    # Получаем все выдачи (issues) вместо items
-    issues = Issue.objects.filter(employee=employee)
-    return render(request, 'core/list_items.html', {
-        'issues': issues,  # Передаем issues вместо items
-        'employee': employee
-    })
-
-@login_required
 def profile(request, username):
     author_obj = get_object_or_404(CustomUser, username=username)
     # items = author_obj.items.all()
@@ -143,65 +133,56 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def employee_detail(request, employee_id):
-    # logger.debug("=== Начало обработки запроса ===")
-    
-    # Получаем сотрудника
     employee = get_object_or_404(Employee, pk=employee_id)
-    # logger.debug(f"Сотрудник: {employee}, Должность: {employee.position}")
-    
-    # Получаем все выдачи сотрудника
-    all_issues = Issue.objects.filter(employee=employee)  # Переименовано в all_issues
+    all_issues = Issue.objects.filter(employee=employee)
     norms_status = []
     
     if employee.position:
-        # logger.debug("Обработка норм...")
         today = date.today()
-        
-        # Получаем нормы для должности
         norms = Norm.objects.filter(position=employee.position).select_related('ppe_type')
-        # logger.debug(f"Найдено норм: {norms.count()}")
         
         for norm in norms:
-            # logger.debug(f"Обработка: {norm.ppe_type.name}")
-            
-            # Фильтруем выдачи по типу СИЗ
-            ppe_issues = all_issues.filter(  # Используем all_issues вместо issues
+            ppe_issues = all_issues.filter(
                 ppe_type=norm.ppe_type,
                 is_active=True
             )
             
-            # Рассчитываем статусы
-            valid_count = ppe_issues.filter(
+            # Актуальные выдачи (не просроченные)
+            valid_issues = ppe_issues.filter(
                 Q(expiration_date__gte=today) | 
                 Q(expiration_date__isnull=True)
-            ).count()
+            )
+            valid_count = valid_issues.count()
             
-            expired_exists = ppe_issues.filter(
-                expiration_date__lt=today
-            ).exists()
-            
-            # Формируем статус
+            # Статусные флаги
             status = []
+            expired_exists = ppe_issues.filter(expiration_date__lt=today).exists()
+            shortage = valid_count < norm.quantity
+            excess = valid_count > norm.quantity
+            
             if expired_exists:
-                status.append("Просрочено")
-            if valid_count < norm.quantity:
-                status.append(f"Не хватает ({valid_count}/{norm.quantity})")
-                
+                status.append("⛔ Просрочено")
+            if shortage:
+                status.append(f"❗ Не хватает ({valid_count}/{norm.quantity})")
+            if excess:
+                status.append(f"📦 Лишние ({valid_count - norm.quantity} шт.)")
+            
+            # Определение общего статуса
+            final_status = " | ".join(status) if status else "✅ В норме"
+            
             norms_status.append({
                 'ppe_type': norm.ppe_type.name,
                 'required': norm.quantity,
                 'actual': valid_count,
-                'status': " | ".join(status) if status else "В норме"
+                'status': final_status
             })
-    
-    # logger.debug(f"Результат: {norms_status}")
-    # logger.debug("=== Обработка завершена ===")
     
     context = {
         'employee': employee,
         'issues': all_issues,
-        'norms_status': norms_status
+        'norms_status': sorted(norms_status, key=lambda x: x['status'], reverse=True)
     }
     return render(request, 'core/employee_detail.html', context)
 
