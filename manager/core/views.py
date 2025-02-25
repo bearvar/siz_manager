@@ -394,3 +394,68 @@ def edit_employee(request, employee_id):
         'shoe_size_choices': Employee.SHOE_SIZE_CHOICES,
     }
     return render(request, 'core/edit_employee.html', context)
+
+
+def quarterly_ppe_needs(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    today = date.today()
+    quarters = []
+    current_date = today
+
+    # Генерируем ближайшие 4 квартала
+    for _ in range(4):
+        current_quarter = (current_date.month - 1) // 3 + 1
+        year = current_date.year
+        if current_quarter == 1:
+            end_date = date(year, 3, 31)
+        elif current_quarter == 2:
+            end_date = date(year, 6, 30)
+        elif current_quarter == 3:
+            end_date = date(year, 9, 30)
+        else:
+            end_date = date(year, 12, 31)
+        quarters.append({
+            'quarter': current_quarter,
+            'year': year,
+            'end_date': end_date
+        })
+        current_date = end_date + relativedelta(days=1)
+
+    if not employee.position:
+        return render(request, 'core/quarterly_issues.html', {
+            'employee': employee,
+            'error': 'Должность не назначена. Невозможно определить нормы.'
+        })
+
+    norms = Norm.objects.filter(position=employee.position).select_related('ppe_type')
+    quarterly_data = []
+
+    for q in quarters:
+        quarter_info = {
+            'quarter': q['quarter'],
+            'year': q['year'],
+            'end_date': q['end_date'],
+            'needs': []
+        }
+        for norm in norms:
+            active_issues = Issue.objects.filter(
+                employee=employee,
+                ppe_type=norm.ppe_type,
+                is_active=True
+            ).filter(
+                Q(expiration_date__gte=q['end_date']) | Q(expiration_date__isnull=True)
+            ).count()
+            needed = max(norm.quantity - active_issues, 0)
+            quarter_info['needs'].append({
+                'ppe_type': norm.ppe_type.name,
+                'required': norm.quantity,
+                'active': active_issues,
+                'needed': needed
+            })
+        quarterly_data.append(quarter_info)
+
+    context = {
+        'employee': employee,
+        'quarters': quarterly_data
+    }
+    return render(request, 'core/quarterly_issues.html', context)

@@ -101,6 +101,7 @@
         <a href="{% url 'core:create_issue' employee_id=employee.id %}" class="btn btn-secondary">Выдать новый предмет</a>
         <a href="{% url 'core:edit_issues' employee_id=employee.id %}" class="btn btn-secondary">Редактировать предметы</a>
         <a href="{% url 'core:edit_employee' employee_id=employee.id %}" class="btn btn-secondary">Редактировать сотрудника</a>
+        <a href="{% url 'core:quarterly_needs' employee_id=employee.id %}" class="btn btn-secondary">Посмотреть потребность СИЗ</a>
       </div>
     </article>
   </div>
