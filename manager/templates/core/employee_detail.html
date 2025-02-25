@@ -14,15 +14,12 @@
   <div class="container-fluid py-3 wider-table">
     <article>
       <div class="card-body">
-        <h1>Детали работника</h1>
-        <h2>{{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h2>
+        <h2>Детали работника</h2>
+        <h3>{{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h3>
 
         <table class="table table-striped">
           <thead>
             <tr>
-              <th>Фамилия</th>
-              <th>Имя</th>
-              <th>Отчество</th>
               <th>Должность</th>
               <th>Подразделение</th>
               <th>Размер спецодежды</th>
@@ -33,9 +30,6 @@
           </thead>
           <tbody>
             <tr>
-              <td>{{ employee.last_name }}</td>
-              <td>{{ employee.first_name }}</td>
-              <td>{{ employee.patronymic }}</td>
               <td>{{ employee.position }}</td>
               <td>{{ employee.department }}</td>
               <td>{{ employee.body_size }}</td>
@@ -47,7 +41,7 @@
         </table>
 
         {% if employee.position %}
-          <h3>Нормы работника:</h3>
+          <h4>Нормы работника:</h4>
           <table class="table table-striped">
             <thead>
               <tr>
@@ -76,7 +70,7 @@
           <div class="alert alert-info">Должность не назначена. Нормы не определены.</div>
         {% endif %}
 
-        <h3>Выданные предметы:</h3>
+        <h4>Выданные предметы:</h4>
         <table class="table table-striped">
           <thead>
             <tr>
