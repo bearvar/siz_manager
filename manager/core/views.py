@@ -136,7 +136,9 @@ logger = logging.getLogger(__name__)
 
 def employee_detail(request, employee_id):
     employee = get_object_or_404(Employee, pk=employee_id)
-    all_issues = Issue.objects.filter(employee=employee)
+    all_issues = Issue.objects.filter(employee=employee).order_by(
+        'expiration_date' # Сначала NULL, потом по возрастанию даты
+    )
     norms_status = []
     
     if employee.position:
