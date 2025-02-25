@@ -1,28 +1,22 @@
 import json
-from xmlrpc.client import Boolean
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponseRedirect
-from .models import Employee, Position, Norm, Issue, PPEType
-from users.models import CustomUser
-from django.core.paginator import Paginator
-from django.utils import timezone
-# from .forms import ItemForm
-from django.contrib.auth.decorators import login_required
-from dateutil.relativedelta import relativedelta
-from collections import defaultdict
-from datetime import datetime, date, timedelta
-import openpyxl
 import logging
-from .forms import EmployeeForm, PositionForm, NormCreateForm, IssueCreateForm
-from django.urls import reverse
-from django.http import JsonResponse
-
-
-from django.shortcuts import get_object_or_404, redirect, render
+import openpyxl
+from collections import defaultdict
+from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from django.contrib import messages
-from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from .models import Norm, Position
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.http import HttpResponseRedirect, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from .forms import EmployeeForm, IssueCreateForm, NormCreateForm, PositionForm
+from .models import Employee, Issue, Norm, PPEType, Position
+from users.models import CustomUser
+from xmlrpc.client import Boolean
+from django.views.decorators.http import require_http_methods
 
 
 logger = logging.getLogger(__name__)
@@ -122,16 +116,6 @@ def position_detail(request, position_id):
 def employee_list(request):
     employees = Employee.objects.all()
     return render(request, 'core/employee_list.html', {'employees': employees})
-
-
-from django.shortcuts import get_object_or_404, render
-from django.utils import timezone
-from datetime import date
-from django.db.models import Q
-from .models import Employee, Issue, Norm
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 def employee_detail(request, employee_id):
@@ -298,6 +282,7 @@ def issue_update(request, issue_id):
     
     try:
         # Получаем данные из формы
+        item_name = request.POST.get('item_name', '').strip()
         item_size = request.POST.get('item_size', '').strip() or None
         issue_date_str = request.POST.get('issue_date')
         expiration_date_str = request.POST.get('expiration_date')
@@ -331,6 +316,7 @@ def issue_update(request, issue_id):
                     pass  # Оставляем текущее значение или None
 
         # Обновляем объект
+        issue.item_name = item_name
         issue.item_size = item_size
         issue.issue_date = new_issue_date
         issue.expiration_date = new_expiration_date
