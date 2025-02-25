@@ -102,6 +102,7 @@
         <a href="{% url 'core:edit_issues' employee_id=employee.id %}" class="btn btn-secondary">Редактировать предметы</a>
         <a href="{% url 'core:edit_employee' employee_id=employee.id %}" class="btn btn-secondary">Редактировать сотрудника</a>
         <a href="{% url 'core:quarterly_needs' employee_id=employee.id %}" class="btn btn-secondary">Посмотреть потребность СИЗ</a>
+        <a href="{% url 'core:expiring_issues' employee_id=employee.id %}" class="btn btn-secondary">Истекающие СИЗ</a>
       </div>
     </article>
   </div>

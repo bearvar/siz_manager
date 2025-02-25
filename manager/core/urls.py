@@ -4,7 +4,6 @@ from . import views
 app_name = 'core'
 
 urlpatterns = [
-    
     path('', views.index, name='index'),
     path('profile/<str:username>/', views.profile, name='profile'),
     path('employee/create/', views.employee_create, name='employee_create'),
@@ -24,4 +23,5 @@ urlpatterns = [
     path('issue/delete/<int:issue_id>/', views.issue_delete, name='issue_delete'),
     path('employees/<int:employee_id>/edit/', views.edit_employee, name='edit_employee'),
     path('employees/<int:employee_id>/quarterly_needs/', views.quarterly_ppe_needs, name='quarterly_needs'),
+    path('employees/<int:employee_id>/expiring_issues/', views.expiring_ppe_issues, name='expiring_issues'),
 ]
