@@ -74,6 +74,26 @@
           </td>
         </tr>
 
+        <!-- Группа высоты -->
+        <tr>
+          <td>Группа высоты</td>
+          <td>{{ employee.height_group|default:"Не назначена" }}</td>
+          <td>
+            <select name="height_group" class="form-select form-select-sm">
+              <option value="">---</option>
+              {% for group in height_groups %}
+                <option value="{{ group.id }}" 
+                  {% if employee.height_group.id == group.id %}selected{% endif %}>
+                  Группа {{ group.level }}
+                </option>
+              {% endfor %}
+            </select>
+            <small class="form-text text-muted">
+              Назначается только при наличии должности
+            </small>
+          </td>
+        </tr>
+
         <!-- Подразделение -->
         <tr>
           <td>Подразделение</td>
@@ -127,7 +147,7 @@
               <option value="">---</option>
               {% for value, label in glove_size_choices %}
                 <option value="{{ value }}" 
-                  {% if employee.glove_size == value|stringformat:"s" %}selected{% endif %}>
+                  {% if employee.glove_size == value %}selected{% endif %}>
                   {{ label }}
                 </option>
               {% endfor %}

@@ -1,23 +1,47 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import Employee
+from .models import Employee, Position, Norm, Issue, PPEType, NormHeight, HeightGroup
 
-from django import forms
-from .models import Employee, Position, Norm, Issue, PPEType
 
 class EmployeeForm(forms.ModelForm):
+    height_group = forms.ModelChoiceField(
+        queryset=HeightGroup.objects.all(),
+        required=False,
+        label="Группа работ на высоте",
+        help_text="Выберите группу безопасности для высотных работ",
+        widget=forms.Select(attrs={'class': 'form-control'}))
+    
     class Meta:
         model = Employee
-        fields = ['last_name', 'first_name', 'patronymic', 'position', 'department', 'body_size', 'head_size', 'glove_size', 'shoe_size']
+        fields = [
+            'last_name', 
+            'first_name', 
+            'patronymic', 
+            'position', 
+            'department',
+            'height_group',  # Добавляем новое поле
+            'body_size', 
+            'head_size', 
+            'glove_size', 
+            'shoe_size'
+        ]
         widgets = {
-            'position': forms.Select(attrs={'class': 'form-control'})
+            'position': forms.Select(attrs={'class': 'form-control'}),
+            'height_group': forms.Select(attrs={'class': 'form-control'})
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['height_group'].queryset = HeightGroup.objects.all().order_by('level')
+        self.fields['height_group'].empty_label = "Не выбрано"
+        self.fields['height_group'].label_from_instance = lambda obj: f"Группа {obj.level}"
 
 
 class PositionForm(forms.ModelForm):
     class Meta:
         model = Position
         fields = ['position_name']
+
 
 class NormCreateForm(forms.ModelForm):
     ppe_type_name = forms.CharField(
@@ -94,6 +118,7 @@ class NormCreateForm(forms.ModelForm):
             instance.save()
         return instance
 
+
 class IssueCreateForm(forms.ModelForm):
     quantity = forms.IntegerField(
         min_value=1,
@@ -123,11 +148,96 @@ class IssueCreateForm(forms.ModelForm):
         self.employee = kwargs.pop('employee')
         super().__init__(*args, **kwargs)
         
-        # Фильтруем типы СИЗ по нормам должности
-        self.fields['ppe_type'].queryset = PPEType.objects.filter(
-            norms__position=self.employee.position
-        ).distinct()
+        # Инициализируем QuerySet'ы
+        position_ppe = PPEType.objects.none()
+        height_ppe = PPEType.objects.none()
         
-        # Настройка полей
+        # Для должности
+        if self.employee.position:
+            position_ppe = PPEType.objects.filter(
+                norms__position=self.employee.position
+            ).distinct()
+            
+        # Для высотной группы
+        if self.employee.height_group:
+            height_ppe = PPEType.objects.filter(
+                height_norms__height_group=self.employee.height_group
+            ).distinct()
+        
+        # Объединяем и исключаем дубликаты
+        combined_ppe = (position_ppe | height_ppe).distinct()
+        
+        self.fields['ppe_type'].queryset = combined_ppe
         self.fields['ppe_type'].widget.attrs.update({'class': 'form-select'})
         self.fields['ppe_type'].empty_label = "Выберите тип СИЗ"
+        self.fields['ppe_type'].help_text = "Выберите из норм должности или высотных работ"
+
+
+class NormHeightCreateForm(forms.ModelForm):
+    ppe_type_name = forms.CharField(
+        label="Тип СИЗ",
+        help_text="Введите название существующего типа или создайте новый",
+        max_length=255
+    )
+    quantity = forms.IntegerField(
+        label="Количество",
+        min_value=1,
+        initial=1,
+        required=True
+    )
+    lifespan = forms.IntegerField(
+        label="Срок годности (месяцев)",
+        min_value=1,
+        initial=6,
+        required=True
+    )
+
+    class Meta:
+        model = NormHeight  # Явно указываем модель
+        fields = ['quantity', 'lifespan']
+        labels = {
+            'quantity': 'Количество',
+            'lifespan': 'Срок годности (месяцев)',
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.height_group = kwargs.pop('height_group', None)
+        super().__init__(*args, **kwargs)
+        self.fields['ppe_type_name'].required = True  # Добавляем обязательность поля
+
+    def clean_ppe_type_name(self):
+        ppe_type_name = self.cleaned_data['ppe_type_name'].strip()
+        if not ppe_type_name:
+            raise ValidationError("Название типа СИЗ обязательно для заполнения")
+        return ppe_type_name
+
+    def clean(self):
+        cleaned_data = super().clean()
+        ppe_type_name = cleaned_data.get('ppe_type_name')
+        
+        normalized_name = ppe_type_name.strip().capitalize()
+        
+        try:
+            ppe_type = PPEType.objects.get(name__iexact=normalized_name)
+            if NormHeight.objects.filter(height_group=self.height_group, ppe_type=ppe_type).exists():
+                self.add_error('ppe_type_name', 
+                    f"Тип СИЗ '{ppe_type.name}' уже добавлен для этой группы")
+            else:
+                cleaned_data['ppe_type'] = ppe_type
+        except PPEType.DoesNotExist:
+            cleaned_data['new_ppe_type'] = normalized_name
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.height_group = self.height_group
+
+        # Создаем или получаем тип СИЗ
+        ppe_type_name = self.cleaned_data['ppe_type_name'].strip().capitalize()
+        ppe_type, created = PPEType.objects.get_or_create(name=ppe_type_name)
+        instance.ppe_type = ppe_type
+
+        if commit:
+            instance.save()
+        return instance

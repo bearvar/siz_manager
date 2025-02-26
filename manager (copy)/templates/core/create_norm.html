@@ -19,16 +19,23 @@
             {% endfor %}
           {% endif %}
 
-          <form method="post">                    
+          <form method="post">
             {% csrf_token %}
 
-            <!-- Поле для ввода нового типа -->
+            <!-- Единое поле для типа СИЗ -->
             <div class="form-group mb-4">
-              <label for="{{ form.new_ppe_type.id_for_label }}">Наименование СИЗ</label>
-              {{ form.new_ppe_type }}
+              <label for="{{ form.ppe_type_name.id_for_label }}">Тип СИЗ</label>
+              {{ form.ppe_type_name }}
               <small class="form-text text-muted">
-                Пример: "Защитные очки", "Костюм термостойкий"
+                Введите существующее название или создайте новое. Пример: "Перчатки", "Каска"
               </small>
+              {% if form.ppe_type_name.errors %}
+                <div class="alert alert-danger mt-2">
+                  {% for error in form.ppe_type_name.errors %}
+                    {{ error }}
+                  {% endfor %}
+                </div>
+              {% endif %}
             </div>
 
             <!-- Поле для количества -->

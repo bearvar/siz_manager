@@ -13,24 +13,23 @@ class EmployeeForm(forms.ModelForm):
             'position': forms.Select(attrs={'class': 'form-control'})
         }
 
+
 class PositionForm(forms.ModelForm):
     class Meta:
         model = Position
         fields = ['position_name']
 
 class NormCreateForm(forms.ModelForm):
-    new_ppe_type = forms.CharField(
-        label="Новый тип СИЗ",
-        required=False,
-        help_text="Введите название нового типа",
+    ppe_type_name = forms.CharField(
+        label="Тип СИЗ",
+        help_text="Введите название существующего типа или создайте новый",
         max_length=255
     )
 
     class Meta:
         model = Norm
-        fields = ['ppe_type', 'quantity', 'lifespan']
+        fields = ['quantity', 'lifespan']
         labels = {
-            'ppe_type': 'Существующий тип СИЗ',
             'quantity': 'Количество',
             'lifespan': 'Срок годности (месяцев)',
         }
@@ -38,33 +37,41 @@ class NormCreateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.position = kwargs.pop('position', None)
         super().__init__(*args, **kwargs)
-        self.fields['ppe_type'].queryset = PPEType.objects.exclude(
-            norms__position=self.position
-        )
-        self.fields['ppe_type'].required = False
+        
+        if self.instance.pk and self.instance.ppe_type:
+            self.fields['ppe_type_name'].initial = self.instance.ppe_type.name
+
+    def clean_ppe_type_name(self):
+        ppe_type_name = self.cleaned_data['ppe_type_name'].strip()
+        if not ppe_type_name:
+            raise ValidationError("Название типа СИЗ обязательно для заполнения")
+        return ppe_type_name
 
     def clean(self):
         cleaned_data = super().clean()
-        ppe_type = cleaned_data.get('ppe_type')
-        new_ppe_type = cleaned_data.get('new_ppe_type')
+        ppe_type_name = cleaned_data.get('ppe_type_name')
+        
+        if not ppe_type_name:
+            return  # Ошибка уже обработана в clean_ppe_type_name
 
-        if not ppe_type and not new_ppe_type:
-            raise ValidationError("Необходимо выбрать тип СИЗ или ввести новый")
-
-        if ppe_type and new_ppe_type:
-            raise ValidationError("Выберите только один вариант: существующий тип или новый")
-
-        if new_ppe_type:
-            # Проверяем не существует ли уже такого типа
-            if PPEType.objects.filter(name__iexact=new_ppe_type.strip()).exists():
-                raise ValidationError("Такой тип СИЗ уже существует")
+        normalized_name = ppe_type_name.capitalize()
+        
+        try:
+            # Ищем существующий тип (без учета регистра)
+            ppe_type = PPEType.objects.get(name__iexact=normalized_name)
             
-            # Проверяем не добавлен ли уже такой тип для этой должности
-            if Norm.objects.filter(
-                position=self.position,
-                ppe_type__name__iexact=new_ppe_type.strip()
-            ).exists():
-                raise ValidationError("Этот тип СИЗ уже добавлен для данной должности")
+            # Проверяем дубликат для текущей должности
+            if Norm.objects.filter(position=self.position, ppe_type=ppe_type).exists():
+                self.add_error(
+                    'ppe_type_name',
+                    f"Тип СИЗ '{ppe_type.name}' уже добавлен для этой должности"
+                )
+            else:
+                cleaned_data['ppe_type'] = ppe_type
+                
+        except PPEType.DoesNotExist:
+            # Создаем новый тип СИЗ
+            cleaned_data['new_ppe_type'] = normalized_name
 
         return cleaned_data
 
@@ -72,17 +79,20 @@ class NormCreateForm(forms.ModelForm):
         instance = super().save(commit=False)
         instance.position = self.position
         
-        new_type = self.cleaned_data.get('new_ppe_type')
-        if new_type:
-            ppe_type, created = PPEType.objects.get_or_create(
-                name=new_type.strip()
-            )
-            instance.ppe_type = ppe_type
-
+        ppe_type = self.cleaned_data.get('ppe_type')
+        new_ppe_type = self.cleaned_data.get('new_ppe_type')
+        
+        if new_ppe_type:
+            ppe_type, created = PPEType.objects.get_or_create(name=new_ppe_type)
+        
+        if not ppe_type:
+            raise ValueError("Не удалось определить тип СИЗ")
+            
+        instance.ppe_type = ppe_type
+        
         if commit:
             instance.save()
         return instance
-
 
 class IssueCreateForm(forms.ModelForm):
     quantity = forms.IntegerField(

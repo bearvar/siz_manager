@@ -7,13 +7,27 @@
 {% block content %}
   <style>
     .wider-table {
-      max-width: 60%;
+      max-width: 70%;
       margin: 0 auto;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .error-text {
+      color: #dc3545;
+      font-size: 0.9em;
+      margin-top: 5px;
+      width: 100%;
     }
   </style>
   <div class="container-fluid py-3 wider-table">
     <article>
       <div class="card-body">
+        {% include 'includes/messages.html' %}
+        
         <a href="{% url 'core:position_create' %}" class="btn btn-primary mb-3">Добавить должность</a>
 
         <table class="table table-striped">
@@ -27,11 +41,48 @@
           {% for position in positions %}
             <tr>
               <td>
-                <a href="{% url 'core:position_detail' position_id=position.id %}" >{{ position.position_name }}</a>
+                <a href="{% url 'core:position_detail' position_id=position.id %}">
+                  {{ position.position_name }}
+                </a>
               </td>
               <td>
-                <a href="{% url 'core:norm_create' position_id=position.id %}" class="btn btn-primary">Добавить норму</a>
-                <a href="{% url 'core:norm_edit' position_id=position.id %}" class="btn btn-primary">Изменить нормы</a>
+                <div class="action-buttons">
+                  <!-- Основные кнопки -->
+                  <a href="{% url 'core:norm_create' position_id=position.id %}" 
+                     class="btn btn-primary btn-sm">
+                    Добавить норму
+                  </a>
+                  <a href="{% url 'core:norm_edit' position_id=position.id %}" 
+                     class="btn btn-primary btn-sm">
+                    Изменить нормы
+                  </a>
+
+                  <!-- Форма удаления -->
+                  <form method="post" 
+                        action="{% url 'core:position_delete' position_id=position.id %}" 
+                        class="d-inline">
+                    {% csrf_token %}
+                    {% if position.employees.exists %}
+                      <button type="button" 
+                              class="btn btn-danger btn-sm" 
+                              disabled
+                              title="Есть сотрудники с этой должностью">
+                        Удалить
+                      </button>
+                    {% else %}
+                      <button type="submit" 
+                              class="btn btn-danger btn-sm"
+                              onclick="return confirm('Вы уверены?')">
+                        Удалить
+                      </button>
+                    {% endif %}
+                  </form>
+                </div>
+                {% if position.employees.exists %}
+                  <div class="error-text">
+                    Удаление возможно только если нет работников
+                  </div>
+                {% endif %}
               </td>
             </tr>
           {% empty %}

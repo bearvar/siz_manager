@@ -13,3 +13,8 @@ def addclass(field, css):
         return ''
     else:
         return field.as_widget(attrs={'class': css})
+
+
+@register.filter
+def split(value, arg):
+    return value.split(arg)

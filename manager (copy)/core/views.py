@@ -1,28 +1,24 @@
 import json
-from xmlrpc.client import Boolean
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponseRedirect
-from .models import Employee, Position, Norm, Issue, PPEType
-from users.models import CustomUser
-from django.core.paginator import Paginator
-from django.utils import timezone
-# from .forms import ItemForm
-from django.contrib.auth.decorators import login_required
-from dateutil.relativedelta import relativedelta
-from collections import defaultdict
-from datetime import datetime, date, timedelta
-import openpyxl
 import logging
-from .forms import EmployeeForm, PositionForm, NormCreateForm, IssueCreateForm
-from django.urls import reverse
-from django.http import JsonResponse
-
-
-from django.shortcuts import get_object_or_404, redirect, render
+import openpyxl
+from collections import defaultdict
+from datetime import date, datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from django.contrib import messages
-from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
-from .models import Norm, Position
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.http import HttpResponseRedirect, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from .forms import EmployeeForm, IssueCreateForm, NormCreateForm, PositionForm
+from .models import Employee, Issue, Norm, PPEType, Position
+from users.models import CustomUser
+from xmlrpc.client import Boolean
+from django.views.decorators.http import require_http_methods
+from django.template.defaulttags import register
+
 
 logger = logging.getLogger(__name__)
 
@@ -52,16 +48,6 @@ def position_list(request):
     positions = Position.objects.all()
     return render(request, 'core/position_list.html', {'positions': positions})
 
-
-@login_required
-def list_items(request, employee_id):
-    employee = get_object_or_404(Employee, pk=employee_id)
-    # Получаем все выдачи (issues) вместо items
-    issues = Issue.objects.filter(employee=employee)
-    return render(request, 'core/list_items.html', {
-        'issues': issues,  # Передаем issues вместо items
-        'employee': employee
-    })
 
 @login_required
 def profile(request, username):
@@ -132,13 +118,60 @@ def employee_list(request):
     employees = Employee.objects.all()
     return render(request, 'core/employee_list.html', {'employees': employees})
 
-from django.shortcuts import get_object_or_404, render
 
-@login_required
 def employee_detail(request, employee_id):
     employee = get_object_or_404(Employee, pk=employee_id)
-    issues = Issue.objects.filter(employee=employee)
-    return render(request, 'core/employee_detail.html', {'employee': employee, 'issues': issues})
+    all_issues = Issue.objects.filter(employee=employee).order_by(
+        'expiration_date' # Сначала NULL, потом по возрастанию даты
+    )
+    norms_status = []
+    
+    if employee.position:
+        today = date.today()
+        norms = Norm.objects.filter(position=employee.position).select_related('ppe_type')
+        
+        for norm in norms:
+            ppe_issues = all_issues.filter(
+                ppe_type=norm.ppe_type,
+                is_active=True
+            )
+            
+            # Актуальные выдачи (не просроченные)
+            valid_issues = ppe_issues.filter(
+                Q(expiration_date__gte=today) | 
+                Q(expiration_date__isnull=True)
+            )
+            valid_count = valid_issues.count()
+            
+            # Статусные флаги
+            status = []
+            expired_exists = ppe_issues.filter(expiration_date__lt=today).exists()
+            shortage = valid_count < norm.quantity
+            excess = valid_count > norm.quantity
+            
+            if expired_exists:
+                status.append("⛔ Просрочено")
+            if shortage:
+                status.append(f"❗ Не хватает ({valid_count}/{norm.quantity})")
+            if excess:
+                status.append(f"📦 Лишние ({valid_count - norm.quantity} шт.)")
+            
+            # Определение общего статуса
+            final_status = " | ".join(status) if status else "✅ В норме"
+            
+            norms_status.append({
+                'ppe_type': norm.ppe_type.name,
+                'required': norm.quantity,
+                'actual': valid_count,
+                'status': final_status
+            })
+    
+    context = {
+        'employee': employee,
+        'issues': all_issues,
+        'norms_status': sorted(norms_status, key=lambda x: x['status'], reverse=True)
+    }
+    return render(request, 'core/employee_detail.html', context)
 
 
 @login_required
@@ -250,6 +283,7 @@ def issue_update(request, issue_id):
     
     try:
         # Получаем данные из формы
+        item_name = request.POST.get('item_name', '').strip()
         item_size = request.POST.get('item_size', '').strip() or None
         issue_date_str = request.POST.get('issue_date')
         expiration_date_str = request.POST.get('expiration_date')
@@ -283,6 +317,7 @@ def issue_update(request, issue_id):
                     pass  # Оставляем текущее значение или None
 
         # Обновляем объект
+        issue.item_name = item_name
         issue.item_size = item_size
         issue.issue_date = new_issue_date
         issue.expiration_date = new_expiration_date
@@ -360,3 +395,128 @@ def edit_employee(request, employee_id):
         'shoe_size_choices': Employee.SHOE_SIZE_CHOICES,
     }
     return render(request, 'core/edit_employee.html', context)
+
+
+def quarterly_ppe_needs(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    today = date.today()
+    quarters = []
+    current_date = today
+
+    # Генерируем ближайшие 4 квартала
+    for _ in range(4):
+        current_quarter = (current_date.month - 1) // 3 + 1
+        year = current_date.year
+        if current_quarter == 1:
+            end_date = date(year, 3, 31)
+        elif current_quarter == 2:
+            end_date = date(year, 6, 30)
+        elif current_quarter == 3:
+            end_date = date(year, 9, 30)
+        else:
+            end_date = date(year, 12, 31)
+        quarters.append({
+            'quarter': current_quarter,
+            'year': year,
+            'end_date': end_date
+        })
+        current_date = end_date + relativedelta(days=1)
+
+    if not employee.position:
+        return render(request, 'core/quarterly_issues.html', {
+            'employee': employee,
+            'error': 'Должность не назначена. Невозможно определить нормы.'
+        })
+
+    norms = Norm.objects.filter(position=employee.position).select_related('ppe_type')
+    quarterly_data = []
+
+    for q in quarters:
+        quarter_info = {
+            'quarter': q['quarter'],
+            'year': q['year'],
+            'end_date': q['end_date'],
+            'needs': []
+        }
+        for norm in norms:
+            active_issues = Issue.objects.filter(
+                employee=employee,
+                ppe_type=norm.ppe_type,
+                is_active=True
+            ).filter(
+                Q(expiration_date__gte=q['end_date']) | Q(expiration_date__isnull=True)
+            ).count()
+            needed = max(norm.quantity - active_issues, 0)
+            quarter_info['needs'].append({
+                'ppe_type': norm.ppe_type.name,
+                'required': norm.quantity,
+                'active': active_issues,
+                'needed': needed
+            })
+        quarterly_data.append(quarter_info)
+
+    context = {
+        'employee': employee,
+        'quarters': quarterly_data
+    }
+    return render(request, 'core/quarterly_issues.html', context)
+
+
+def expiring_ppe_issues(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    today = date.today()
+    quarters = []
+    
+    # Генерируем 4 ближайших квартала
+    current_date = today
+    for _ in range(4):
+        year = current_date.year
+        quarter = (current_date.month - 1) // 3 + 1
+        
+        # Определяем даты начала и конца квартала
+        if quarter == 1:
+            start_date = date(year, 1, 1)
+            end_date = date(year, 3, 31)
+        elif quarter == 2:
+            start_date = date(year, 4, 1)
+            end_date = date(year, 6, 30)
+        elif quarter == 3:
+            start_date = date(year, 7, 1)
+            end_date = date(year, 9, 30)
+        else:
+            start_date = date(year, 10, 1)
+            end_date = date(year, 12, 31)
+        
+        quarters.append({
+            'quarter': quarter,
+            'year': year,
+            'start_date': start_date,
+            'end_date': end_date
+        })
+        
+        # Переходим к следующему кварталу
+        current_date = end_date + relativedelta(days=1)
+    
+    # Собираем данные по каждому кварталу
+    quarterly_issues = []
+    for q in quarters:
+        issues = Issue.objects.filter(
+            employee=employee,
+            expiration_date__gte=q['start_date'],
+            expiration_date__lte=q['end_date'],
+            is_active=True
+        ).select_related('ppe_type').order_by('expiration_date')
+        
+        quarterly_issues.append({
+            'quarter': q['quarter'],
+            'year': q['year'],
+            'issues': issues,
+            'count': issues.count()
+        })
+    
+    context = {
+        'employee': employee,
+        'quarterly_issues': quarterly_issues,
+        'today': today
+    }
+    return render(request, 'core/expiring_issues.html', context)

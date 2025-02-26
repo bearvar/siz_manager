@@ -139,10 +139,17 @@ LOGIN_REDIRECT_URL = 'core:index'
 
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': True,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
         },
     },
     'root': {
@@ -155,10 +162,9 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
-        'items': {
+        'core.views': {
             'handlers': ['console'],
             'level': 'DEBUG',
-            'propagate': False,
         },
     },
 }

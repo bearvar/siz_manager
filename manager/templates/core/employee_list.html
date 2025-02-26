@@ -24,10 +24,10 @@
               <th>Отчество</th>
               <th>Должность</th>
               <th>Подразделение</th>
-              <th>Размер спецодежды</th>
+              <!--<th>Размер спецодежды</th>
               <th>Размер головного убора</th>
               <th>Размер перчаток</th>
-              <th>Размер обуви</th>
+              <th>Размер обуви</th>-->
               <th>Действия</th>
             </tr>
           </thead>
@@ -39,10 +39,10 @@
               <td>{{ employee.patronymic }}</td>
               <td>{{ employee.position }}</td>
               <td>{{ employee.department }}</td>
-              <td>{{ employee.body_size }}</td>
+              <!--<td>{{ employee.body_size }}</td>
               <td>{{ employee.head_size }}</td>
               <td>{{ employee.glove_size }}</td>
-              <td>{{ employee.shoe_size }}</td>
+              <td>{{ employee.shoe_size }}</td>-->
               <td><a href="{% url 'core:list_items' employee_id=employee.id %}" class="btn btn-primary">Посмотреть СИЗ</a></td>
             </tr>
           {% empty %}

@@ -21,6 +21,7 @@
           <thead>
             <tr>
               <th>Должность</th>
+              <th>Группа по высоте</th>
               <th>Подразделение</th>
               <th>Размер спецодежды</th>
               <th>Размер головного убора</th>
@@ -31,6 +32,7 @@
           <tbody>
             <tr>
               <td>{{ employee.position }}</td>
+              <td>{{ employee.height_group|default:"-" }}</td>
               <td>{{ employee.department }}</td>
               <td>{{ employee.body_size }}</td>
               <td>{{ employee.head_size }}</td>

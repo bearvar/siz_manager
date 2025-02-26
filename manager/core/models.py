@@ -1,7 +1,8 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
-
+from django.db.models.signals import post_migrate
+from django.dispatch import receiver
 
 MEASUREMENT_UNITS = (
     ("шт.", "штук"),
@@ -25,6 +26,84 @@ class Position(models.Model):
     def __str__(self):
         return self.position_name
 
+
+class PPEType(models.Model):
+    name = models.CharField(
+        "Тип СИЗ",
+        max_length=255,
+        unique=True,
+        help_text="Укажите тип средства индивидуальной защиты"
+    )
+    default_mu = models.CharField(
+        "Единица измерения",
+        max_length=10,
+        choices=MEASUREMENT_UNITS,  # Используем константы из Issue
+        default="шт."
+    )
+    
+    class Meta:
+        verbose_name = "Тип СИЗ"
+        verbose_name_plural = "Типы СИЗ"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class HeightGroup(models.Model):
+    level = models.PositiveIntegerField(
+        "Уровень",
+        unique=True,
+        choices=[(1, '1 группа'), (2, '2 группа'), (3, '3 группа')]
+    )
+
+    class Meta:
+        verbose_name = "Группа работ на высоте"
+        verbose_name_plural = "Группы работ на высоте"
+        ordering = ['level']
+
+    def __str__(self):
+        return f"Группа {self.level}"
+    
+    @classmethod
+    def ensure_groups_exist(cls):
+        """Создает группы, если они отсутствуют"""
+        for level in [1, 2, 3]:
+            cls.objects.get_or_create(level=level)
+            
+    def save(self, *args, **kwargs):
+        # Запрещаем создание новых групп
+        if self.pk is None and self.level not in [1, 2, 3]:
+            raise ValueError("Можно создавать только группы 1, 2 и 3 уровня")
+        super().save(*args, **kwargs)
+
+
+class NormHeight(models.Model):
+    height_group = models.ForeignKey(
+        HeightGroup,
+        on_delete=models.CASCADE,
+        related_name='norms'
+    )
+    ppe_type = models.ForeignKey(
+        PPEType,
+        on_delete=models.CASCADE,
+        related_name='height_norms'
+    )
+    quantity = models.PositiveIntegerField("Количество")
+    lifespan = models.PositiveIntegerField(
+        "Срок годности (месяцев)",
+        default=6  # По умолчанию меньше чем для обычных норм
+    )
+
+    class Meta:
+        unique_together = ['height_group', 'ppe_type']
+        verbose_name = "Норма для высотных работ"
+        verbose_name_plural = "Нормы для высотных работ"
+
+    def __str__(self):
+        return f"{self.height_group}: {self.ppe_type} x{self.quantity}"
+
+
 class Employee(models.Model):
     # Существующие поля
     first_name = models.CharField("Имя", max_length=50)
@@ -36,6 +115,13 @@ class Employee(models.Model):
         verbose_name="Должность",
         null=True,
         related_name="employees"
+    )
+    height_group = models.ForeignKey(
+        HeightGroup,
+        on_delete=models.SET_NULL,
+        verbose_name="Группа работ на высоте",
+        null=True,
+        blank=True
     )
     department = models.CharField("Подразделение", max_length=50)
     
@@ -89,19 +175,19 @@ class Employee(models.Model):
     ]
     
     GLOVE_SIZE_CHOICES = [
-        (6.0, 6.0),
-        (6.5, 6.5),
-        (7.0, 7.0),
-        (7.5, 7.5),
-        (8.0, 8.0),
-        (8.5, 8.5),
-        (9.0, 9.0),
-        (9.5, 9.5),
-        (10.0, 10.0),
-        (10.5, 10.5),
-        (11.0, 11.0),
-        (11.5, 11.5),
-        (12.0, 12.0),
+        (6.0, "6.0"),
+        (6.5, "6.5"), 
+        (7.0, "7.0"),
+        (7.5, "7.5"),
+        (8.0, "8.0"),
+        (8.5, "8.5"),
+        (9.0, "9.0"),
+        (9.5, "9.5"),
+        (10.0, "10.0"),
+        (10.5, "10.5"),
+        (11.0, "11.0"),
+        (11.5, "11.5"),
+        (12.0, "12.0")
     ]
     
     SHOE_SIZE_CHOICES = [(i, str(i)) for i in range(35, 53)]  # 35-52
@@ -160,31 +246,16 @@ class Employee(models.Model):
                 expiration_date=expiration_date
             )
     
+    def clean(self):
+        if self.height_group and not self.position:
+            raise ValidationError(
+                {'height_group': 'Для назначения группы высоты требуется указать должность'}
+            )
+        super().clean()
+    
     def __str__(self):
         return f"{self.last_name} {self.first_name} {self.patronymic}".strip()
 
-
-class PPEType(models.Model):
-    name = models.CharField(
-        "Тип СИЗ",
-        max_length=255,
-        unique=True,
-        help_text="Укажите тип средства индивидуальной защиты"
-    )
-    default_mu = models.CharField(
-        "Единица измерения",
-        max_length=10,
-        choices=MEASUREMENT_UNITS,  # Используем константы из Issue
-        default="шт."
-    )
-    
-    class Meta:
-        verbose_name = "Тип СИЗ"
-        verbose_name_plural = "Типы СИЗ"
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
 
 class Norm(models.Model):
     position = models.ForeignKey(
@@ -201,7 +272,7 @@ class Norm(models.Model):
         "Количество",
         help_text="Сколько единиц СИЗ положено для этой должности"
     )
-    lifespan = models.PositiveIntegerField(  # Новое поле
+    lifespan = models.PositiveIntegerField(
         "Срок годности (месяцев)",
         default=12
     )
@@ -220,6 +291,7 @@ class Norm(models.Model):
             ppe_type=self.ppe_type,
             is_active=True
         )
+
 
 class Issue(models.Model):
     employee = models.ForeignKey(
@@ -264,19 +336,55 @@ class Issue(models.Model):
         choices=MEASUREMENT_UNITS,
         default="шт."
     )
-
+    
     def save(self, *args, **kwargs):
-        # Пересчитываем срок годности только если он не задан вручную
-        if not self.expiration_date:
-            try:
-                norm = Norm.objects.get(
-                    position=self.employee.position,
-                    ppe_type=self.ppe_type
-                )
-                self.expiration_date = self.issue_date + relativedelta(months=norm.lifespan)
-            except Norm.DoesNotExist:
-                pass
+        # Если дата списания была изменена вручную - сохраняем как есть
+        if self.expiration_date != self._original_expiration_date:
+            super().save(*args, **kwargs)
+            return
+        
+        # Пересчет только если:
+        # - дата выдачи изменилась ИЛИ
+        # - срок списания не задан
+        if self.issue_date != self._original_issue_date or not self.expiration_date:
+            # Сбрасываем для пересчета
+            self.expiration_date = None
+            
+            # Приоритет для высотных норм
+            if self.employee.height_group:
+                try:
+                    norm = NormHeight.objects.get(
+                        height_group=self.employee.height_group,
+                        ppe_type=self.ppe_type
+                    )
+                    self.expiration_date = self.issue_date + relativedelta(months=norm.lifespan)
+                except NormHeight.DoesNotExist:
+                    pass
+            
+            # Если не нашли, проверяем обычные нормы
+            if not self.expiration_date and self.employee.position:
+                try:
+                    norm = Norm.objects.get(
+                        position=self.employee.position,
+                        ppe_type=self.ppe_type
+                    )
+                    self.expiration_date = self.issue_date + relativedelta(months=norm.lifespan)
+                except Norm.DoesNotExist:
+                    pass
+        
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Работник: {self.employee}; Тип СИЗ: {self.ppe_type}; Название: {self.item_name}; Дата выдачи: {self.issue_date}"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_issue_date = self.issue_date
+        self._original_expiration_date = self.expiration_date
+
+
+@receiver(post_migrate)
+def create_initial_groups(sender, **kwargs):
+    if sender.name == 'core':
+        from .models import HeightGroup
+        HeightGroup.ensure_groups_exist()

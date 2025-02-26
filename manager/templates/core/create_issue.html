@@ -53,9 +53,11 @@
             <div class="form-group row my-3">
               <label for="{{ form.ppe_type.id_for_label }}" class="col-form-label col-md-4">
                 {{ form.ppe_type.label }}
-                {% if form.ppe_type.field.required %}
-                  <span class="required text-danger ms-1">*</span>
-                {% endif %}
+                <small class="form-text text-muted">
+                  Доступные типы: 
+                  {% if employee.position %}по должности{% endif %}
+                  {% if employee.height_group %}и высотные{% endif %}
+                </small>
               </label>
               <div class="col-md-8">
                 {{ form.ppe_type}}

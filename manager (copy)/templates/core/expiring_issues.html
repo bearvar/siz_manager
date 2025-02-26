@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>СИЗ с истекающим сроком для {{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h3>
+    
+    {% for quarter in quarterly_issues %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h4>
+                {{ quarter.year }} год, {{ quarter.quarter }} квартал 
+                <!-- ({{ quarter.quarter|add:"0"|stringformat:"d" }} квартал: 
+                {{ quarter.issues.0.start_date|date:"d.m.Y" }} - 
+                {{ quarter.issues.0.end_date|date:"d.m.Y" }}) -->
+            </h4>
+            <span>Всего истекает: {{ quarter.count }}</span>
+        </div>
+        <div class="card-body">
+            {% load user_filters %}
+            {% if quarter.issues %}
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Тип СИЗ</th>
+                        <th>Наименование</th>
+                        <th>Дата выдачи</th>
+                        <th>Дата списания</th>
+                        <!-- <th>Осталось времени</th> -->
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for issue in quarter.issues %}
+                    <tr>
+                        <td>{{ issue.ppe_type.name }}</td>
+                        <td>{{ issue.item_name }}</td>
+                        <td>{{ issue.issue_date|date:"d.m.Y" }}</td>
+                        <td>{{ issue.expiration_date|date:"d.m.Y" }}</td>
+                        <!--<td>
+                            {% with days_left=issue.expiration_date|timeuntil:today %}
+                                {{ days_left|split:" "|first }}
+                            {% endwith %}
+                        </td>-->
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="alert alert-info">Нет СИЗ с истекающим сроком в этом квартале</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    
+    <a href="{% url 'core:employee_detail' employee_id=employee.id %}" class="btn btn-secondary mt-3">Назад</a>
+</div>
+{% endblock %}

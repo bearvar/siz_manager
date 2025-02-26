@@ -11,6 +11,7 @@ urlpatterns = [
     path('norm/create/<int:position_id>/', views.create_norm, name='norm_create'),
     path('positions/', views.position_list, name='position_list'),
     path('position/<int:position_id>/', views.position_detail, name='position_detail'),
+    path('position/delete/<int:position_id>/', views.position_delete, name='position_delete'),
     path('employees/', views.employee_list, name='employee_list'),
     path('employees/<int:employee_id>/', views.employee_detail, name='employee_detail'),
     path('items/<int:employee_id>/', views.employee_detail, name='list_items'),
@@ -24,4 +25,11 @@ urlpatterns = [
     path('employees/<int:employee_id>/edit/', views.edit_employee, name='edit_employee'),
     path('employees/<int:employee_id>/quarterly_needs/', views.quarterly_ppe_needs, name='quarterly_needs'),
     path('employees/<int:employee_id>/expiring_issues/', views.expiring_ppe_issues, name='expiring_issues'),
+    
+    path('height_groups/', views.height_group_list, name='height_group_list'),
+    path('height_group/<int:group_id>/', views.height_group_detail, name='height_group_detail'),
+    path('norm_height/create/<int:group_id>/', views.create_norm_height, name='norm_height_create'),
+    path('norm_height/edit/<int:group_id>/', views.norm_height_edit, name='norm_height_edit'),
+    path('norm_height/update/<int:norm_id>/', views.norm_height_update, name='norm_height_update'),
+    path('norm_height/delete/<int:norm_id>/', views.norm_height_delete, name='norm_height_delete'),
 ]

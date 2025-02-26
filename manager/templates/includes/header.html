@@ -29,6 +29,9 @@
               <li class="nav-item">
                 <a class="nav-link white-text {% if view_name  == 'core:position_list' %}active{% endif %}" href="{% url 'core:position_list' %}">Список должностей</a>
               </li>
+              <li class="nav-item">
+                <a class="nav-link white-text {% if view_name  == 'core:height_group_list' %}active{% endif %}" href="{% url 'core:height_group_list' %}">Группы по высоте</a>
+              </li>
               
               
               {% if user.is_authenticated %}
