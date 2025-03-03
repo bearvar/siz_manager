@@ -40,7 +40,7 @@
                         <span class="required text-danger" >*</span>
                       {% endif%}
                     </label>
-                    {{ field|addclass:'form-control' }}  <!-- Add 'form-control' to other fields -->
+                    {{ field|addclass:'form-control' }}
                     {% if field.help_text %}
                       <small id="{{ field.id_for_label }}-help" class="form-text text-muted">
                         {{ field.help_text|safe }}

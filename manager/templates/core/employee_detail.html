@@ -4,6 +4,17 @@
   Детали работника
 {% endblock %}
 
+<style>
+  .wider-table {
+    max-width: 90%;
+    margin: 0 auto;
+  }
+  .table-striped td {
+    word-wrap: break-word; /* Перенос слов */
+    white-space: normal; /* Перенос строк */
+  }
+</style>
+
 {% block content %}
   <style>
     .wider-table {
@@ -14,8 +25,7 @@
   <div class="container-fluid py-3 wider-table">
     <article>
       <div class="card-body">
-        <h2>Детали работника</h2>
-        <h3>{{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h3>
+        <h2>Детали работника: {{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h2>
 
         <table class="table table-striped">
           <thead>
@@ -56,7 +66,7 @@
             <tbody>
               {% for norm in norms_status %}
                 <tr>
-                  <td>{{ norm.ppe_type }}</td>
+                  <td style="word-wrap: break-word; white-space: normal;">{{ norm.ppe_type }}</td>
                   <td>{{ norm.required }}</td>
                   <td>{{ norm.actual }}</td>
                   <td>{{ norm.status }}</td>
@@ -86,7 +96,7 @@
           <tbody>
             {% for issue in issues %}
               <tr>
-                <td>{{ issue.ppe_type.name }}</td>
+                <td style="word-wrap: break-word; white-space: normal;">{{ issue.ppe_type.name }}</td>
                 <td>{{ issue.item_name }}</td>
                 <td>{{ issue.item_size }}</td>
                 <td>{{ issue.issue_date }}</td>

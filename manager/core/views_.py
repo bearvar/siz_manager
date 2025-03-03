@@ -25,76 +25,21 @@ logger = logging.getLogger(__name__)
 
 
 def index(request):
-    today = date.today()
-    quarters = []
+    title = "Главная страница"
     
-    # Генерируем 4 ближайших квартала
-    current_date = today
-    for _ in range(4):
-        year = current_date.year
-        quarter = (current_date.month - 1) // 3 + 1
-        
-        # Определяем даты начала и конца квартала
-        if quarter == 1:
-            start_date = date(year, 1, 1)
-            end_date = date(year, 3, 31)
-        elif quarter == 2:
-            start_date = date(year, 4, 1)
-            end_date = date(year, 6, 30)
-        elif quarter == 3:
-            start_date = date(year, 7, 1)
-            end_date = date(year, 9, 30)
-        else:
-            start_date = date(year, 10, 1)
-            end_date = date(year, 12, 31)
-        
-        quarters.append({
-            'quarter': quarter,
-            'year': year,
-            'start_date': start_date,
-            'end_date': end_date
-        })
-        
-        # Переходим к следующему кварталу
-        current_date = end_date + relativedelta(days=1)
+    # Получаем все активные выдачи СИЗ с предзагрузкой связанных объектов
+    # issue_list = Issue.objects.select_related('employee', 'item').filter(is_active=True).order_by('employee', '-issue_date')
     
-    # Собираем данные по каждому кварталу
-    quarterly_data = []
-    for q in quarters:
-        # Получаем все активные выдачи для квартала
-        issues = Issue.objects.filter(
-            expiration_date__gte=q['start_date'],
-            expiration_date__lte=q['end_date'],
-            is_active=True
-        ).select_related('employee', 'ppe_type').order_by('expiration_date')
-        
-        # Группируем по сотрудникам
-        employees_issues = defaultdict(list)
-        for issue in issues:
-            employees_issues[issue.employee].append(issue)
-        
-        # Формируем структуру данных для шаблона
-        employees_list = []
-        for employee, items in employees_issues.items():
-            employees_list.append({
-                'employee': employee,
-                'issues': items,
-                'count': len(items)
-            })
-        
-        quarterly_data.append({
-            'quarter': q['quarter'],
-            'year': q['year'],
-            'start_date': q['start_date'],
-            'end_date': q['end_date'],
-            'employees': employees_list,
-            'total': issues.count()
-        })
+    # Группируем выдачи по сотрудникам
+    # grouped_issues = defaultdict(list)
+    # for issue in issue_list:
+    #     grouped_issues[issue.employee].append(issue)
     
     context = {
-        'title': 'Главная страница',
-        'quarters': quarterly_data,
-        'current_date': today
+        'title': title,
+        # 'grouped_issues': dict(grouped_issues),
+        # 'user': request.user,
+        'current_date': timezone.now().date()
     }
     return render(request, 'core/index.html', context)
 
@@ -727,3 +672,60 @@ def norm_height_delete(request, norm_id):
         messages.error(request, f"Ошибка при удалении: {str(e)}")
     
     return redirect('core:norm_height_edit', group_id=group_id)
+
+
+@login_required
+def consumable_group_list(request):
+    groups = ConsumableGroup.objects.all()
+    return render(request, 'core/consumable_group_list.html', {'groups': groups})
+
+
+@login_required
+def consumable_group_create(request):
+    if request.method == 'POST':
+        form = ConsumableGroupForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('core:consumable_group_list')
+    else:
+        form = ConsumableGroupForm()
+    return render(request, 'core/consumable_group_create.html', {'form': form})
+
+
+@login_required
+def consumable_group_detail(request, group_id):
+    group = get_object_or_404(ConsumableGroup, pk=group_id)
+    norms = NormConsumable.objects.filter(consumable_group=group)
+    return render(request, 'core/consumable_group_detail.html', {'group': group, 'norms': norms})
+
+
+@login_required
+def create_norm_consumable(request, group_id):
+    group = get_object_or_404(ConsumableGroup, pk=group_id)
+    if request.method == 'POST':
+        form = NormConsumableCreateForm(request.POST)
+        if form.is_valid():
+            norm = form.save(commit=False)
+            norm.consumable_group = group
+            norm.save()
+            return redirect('core:consumable_group_detail', group_id=group.id)
+    else:
+        form = NormConsumableCreateForm()
+    return render(request, 'core/create_norm_consumable.html', {'form': form, 'group': group})
+
+
+@login_required
+def create_consumable_issue(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    if request.method == 'POST':
+        form = ConsumableIssueForm(request.POST, employee=employee)
+        if form.is_valid():
+            issue = form.save(commit=False)
+            issue.employee = employee
+            issue.save()
+            return redirect('core:employee_detail', employee_id=employee.id)
+    else:
+        form = ConsumableIssueForm(employee=employee)
+    return render(request, 'core/create_consumable_issue.html', {'form': form, 'employee': employee})
+
+

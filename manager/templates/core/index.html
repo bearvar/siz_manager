@@ -1,57 +1,65 @@
 {% extends 'base.html' %}
 
-{% block title %}
-  {{ title }}
-{% endblock %}
-
 {% block content %}
-  <div class="container py-3 col-9">
-    {% for employee, issues in grouped_issues.items %}
-      <div class="card mb-3">
-        <div class="card-header">
-          <h3 class="card-title">
-            {{ employee.last_name }} 
-            {{ employee.first_name }} 
-            {{ employee.patronymic }}
-          </h3>
-          <div class="text-muted small">
-            Должность: {{ employee.position.position_name|default:"не указана" }}
-          </div>
+<div class="container mt-4">
+    <h3>СИЗ с истекающим сроком годности по всем сотрудникам</h3>
+    
+    {% for quarter in quarters %}
+    <div class="card mt-4">
+        <div class="card-header bg-light">
+            <h4 class="mb-0">
+                {{ quarter.year }} год, {{ quarter.quarter }}-й квартал
+                <small class="text-muted">
+                    ({{ quarter.start_date|date:"d.m.Y" }} - {{ quarter.end_date|date:"d.m.Y" }})
+                </small>
+            </h4>
+            <span class="badge badge-primary">Всего позиций: {{ quarter.total }}</span>
         </div>
-        <div class="card-body">
-          <div class="flex-table">
-            <!-- Заголовки таблицы -->
-            <div class="flex-row flex-header">
-              <div class="col-3">Наименование СИЗ</div>
-              <div class="col-2">Тип СИЗ</div>
-              <div class="col-2">Дата выдачи</div>
-              <div class="col-2">Срок годности</div>
-              <div class="col-1">Ед. изм.</div>
-              <div class="col-2">Статус</div>
-            </div>
-            
-            <!-- Строки с данными -->
-            {% for issue in issues %}
-              <div class="flex-row {% if issue.expiration_date < current_date %}table-danger{% endif %}">
-                <div class="col-3">{{ issue.ppe_type.item_name }}</div>
-                <div class="col-2">{{ issue.ppe_type.item_type }}</div>
-                <div class="col-2">{{ issue.issue_date|date:"d.m.Y" }}</div>
-                <div class="col-2">{{ issue.expiration_date|date:"d.m.Y" }}</div>
-                <div class="col-1">{{ issue.ppe_type.get_item_mu_display }}</div>
-                <div class="col-2">
-                  {% if issue.is_active %}
-                    <span class="text-success">Активно</span>
-                  {% else %}
-                    <span class="text-danger">Списано</span>
-                  {% endif %}
+        
+        <div class="card-body p-0">
+            {% if quarter.employees %}
+                <div class="list-group list-group-flush">
+                    {% for emp_data in quarter.employees %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0">
+                                {{ emp_data.employee.last_name }} 
+                                {{ emp_data.employee.first_name }} 
+                                {{ emp_data.employee.patronymic }}
+                            </h5>
+                            <span class="badge badge-info">Позиций: {{ emp_data.count }}</span>
+                        </div>
+                        
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th style="width: 25%">Тип СИЗ</th>
+                                    <th style="width: 35%">Наименование</th>
+                                    <th style="width: 20%">Дата выдачи</th>
+                                    <th style="width: 20%">Списание до</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for issue in emp_data.issues %}
+                                <tr>
+                                    <td>{{ issue.ppe_type.name }}</td>
+                                    <td>{{ issue.item_name }}</td>
+                                    <td>{{ issue.issue_date|date:"d.m.Y" }}</td>
+                                    <td class="{% if issue.expiration_date < current_date %}text-danger{% endif %}">
+                                        {{ issue.expiration_date|date:"d.m.Y" }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endfor %}
                 </div>
-              </div>
-            {% endfor %}
-          </div>
+            {% else %}
+                <div class="alert alert-info m-3">Нет СИЗ с истекающим сроком в этом квартале</div>
+            {% endif %}
         </div>
-      </div>
-    {% empty %}
-      <div class="alert alert-info">Нет активных выдач СИЗ</div>
+    </div>
     {% endfor %}
-  </div>
+</div>
 {% endblock %}
