@@ -12,6 +12,7 @@
       <a href="{% url 'core:norm_create' position_id=position.id %}" class="btn btn-primary">
         Добавить норму
       </a>
+      <a href="{% url 'core:sap_import' position_id=position.id %}" class="btn btn-primary">Импорт из SAP</a>
       <a href="{% url 'core:norm_edit' position.id %}" class="btn btn-primary">
         <i class="bi bi-pencil"></i> Редактировать нормы
       </a>

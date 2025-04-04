@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Результаты импорта{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-10 p-5">
+      <div class="card">
+        <div class="card-header">
+          Результаты импорта для "{{ position.position_name }}"
+        </div>
+        
+        <div class="card-body">
+          {% if results.created %}
+            <div class="alert alert-success mb-4">
+              Успешно импортировано: {{ results.created|length }} норм
+            </div>
+            
+            <h4>Созданные нормы:</h4>
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Тип СИЗ</th>
+                  <th>Количество</th>
+                  <th>Срок (мес.)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in results.created %}
+                <tr>
+                  <td>{{ item.ppe_type }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td>{{ item.lifespan }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% endif %}
+
+          {% if results.errors %}
+            <div class="alert alert-{{ results.created|yesno:'warning,danger' }} mb-4">
+              Обнаружено ошибок: {{ results.errors|length }}
+            </div>
+            
+            <h4>Ошибки:</h4>
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Тип</th>
+                  <th>Описание</th>
+                  <th>Данные</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for error in results.errors %}
+                <tr>
+                  <td>
+                    {% if error.type == 'global' %}
+                      <span class="badge bg-danger">Системная</span>
+                    {% else %}
+                      <span class="badge bg-warning">Строка {{ error.row }}</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ error.message }}</td>
+                  <td>
+                    {% if error.data %}
+                      <pre class="m-0">{{ error.data|pprint }}</pre>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% endif %}
+
+          {% if not results.created and not results.errors %}
+            <div class="alert alert-info">
+              Нет данных для отображения
+            </div>
+          {% endif %}
+
+          <div class="mt-4 text-center">
+            <a href="{% url 'core:position_detail' position.id %}" 
+               class="btn btn-primary">
+              ← Вернуться к должности
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

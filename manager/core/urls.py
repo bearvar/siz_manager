@@ -11,6 +11,7 @@ urlpatterns = [
     path('norm/create/<int:position_id>/', views.create_norm, name='norm_create'),
     path('positions/', views.position_list, name='position_list'),
     path('position/<int:position_id>/', views.position_detail, name='position_detail'),
+    path('position/<int:position_id>/import-sap/', views.sap_import, name='sap_import'),
     path('position/delete/<int:position_id>/', views.position_delete, name='position_delete'),
     path('employees/', views.employee_list, name='employee_list'),
     path('employees/<int:employee_id>/', views.employee_detail, name='employee_detail'),

@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Импорт из SAP{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 p-5">
+      <div class="card">
+        <div class="card-header">Импорт норм из SAP для должности "{{ position.name }}"</div>
+        <div class="card-body">
+          {% if form.errors %}
+            {% for field in form %}
+              {% for error in field.errors %}
+                <div class="alert alert-danger">{{ error|escape }}</div>
+              {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+              <div class="alert alert-danger">{{ error|escape }}</div>
+            {% endfor %}
+          {% endif %}
+
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="form-group row my-3">
+              <label for="{{ form.sap_file.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.sap_file.label }}
+                {% if form.sap_file.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.sap_file }}
+                {% if form.sap_file.help_text %}
+                  <small class="form-text text-muted">
+                    {{ form.sap_file.help_text }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-center mt-4">
+              <button type="submit" class="btn btn-primary me-2">
+                Загрузить
+              </button>
+              <a href="{% url 'core:position_detail' position.id %}" class="btn btn-secondary">
+                Отмена
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

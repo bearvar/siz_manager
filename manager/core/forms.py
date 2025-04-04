@@ -241,3 +241,11 @@ class NormHeightCreateForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+    
+
+class SAPImportForm(forms.Form):
+    sap_file = forms.FileField(
+        label='Файл SAP',
+        help_text='Выберите файл в формате CSV/XLSX для импорта'
+    )
+    

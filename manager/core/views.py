@@ -12,13 +12,16 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from .forms import EmployeeForm, IssueCreateForm, NormCreateForm, PositionForm, NormHeightCreateForm
+from .forms import EmployeeForm, IssueCreateForm, NormCreateForm, PositionForm, NormHeightCreateForm, SAPImportForm
 from .models import Employee, Issue, Norm, PPEType, Position, NormHeight, HeightGroup
 from users.models import CustomUser
 from xmlrpc.client import Boolean
 from django.views.decorators.http import require_http_methods
 from django.template.defaulttags import register
-from django.contrib import messages
+from django.db import transaction
+from django import forms
+import pandas as pd
+from io import BytesIO
 
 
 logger = logging.getLogger(__name__)
@@ -727,3 +730,164 @@ def norm_height_delete(request, norm_id):
         messages.error(request, f"Ошибка при удалении: {str(e)}")
     
     return redirect('core:norm_height_edit', group_id=group_id)
+
+
+UNIT_CONVERSION = {
+    "кмп": "компл.",
+    "кмп.": "компл.",
+    "шт": "шт.",
+    "пар": "пар.",
+    "г": "г.",
+    "мл": "мл.",
+    "компл": "компл.",
+    "пары": "пар.",
+    "штук": "шт.",
+}
+
+@login_required
+def sap_import(request, position_id):
+    position = get_object_or_404(Position, pk=position_id)
+    results = {'created': [], 'errors': []}
+
+    # Проверка на существующие нормы
+    if Norm.objects.filter(position=position).exists():
+        results['errors'].append({
+            'type': 'global',
+            'message': 'Импорт невозможен: для этой должности уже существуют нормы'
+        })
+        return render(request, 'core/import_results.html', {
+            'position': position,
+            'results': results
+        })
+
+    if request.method == 'POST':
+        form = SAPImportForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    file = request.FILES['sap_file']
+                    
+                    # Чтение Excel файла
+                    try:
+                        df = pd.read_excel(BytesIO(file.read()))
+                    except Exception as e:
+                        raise ValueError(f"Ошибка чтения файла: {str(e)}")
+
+                    # Проверка обязательных колонок
+                    required_columns = [
+                        'Наименование группы (краткое)',
+                        'Единица измерения', 
+                        'Лимит',
+                        'Срок использования',
+                        'К выдаче'
+                    ]
+                    
+                    if not set(required_columns).issubset(df.columns):
+                        missing = set(required_columns) - set(df.columns)
+                        raise ValueError(f"Отсутствуют колонки: {', '.join(missing)}")
+
+                    # Фильтрация по колонке "К выдаче"
+                    try:
+                        # Конвертируем все значения в строки и обрабатываем
+                        df['К выдаче'] = df['К выдаче'].astype(str).str.strip().str.lower()
+                        
+                        # Заменяем булевы значения на строковые
+                        df['К выдаче'] = df['К выдаче'].replace({
+                            'true': 'true',
+                            'false': 'false',
+                            '1': 'true',
+                            '0': 'false',
+                            'да': 'true',
+                            'нет': 'false'
+                        })
+                        
+                        # Фильтруем только строки с true
+                        df = df[df['К выдаче'] == 'true']
+                    
+                    except KeyError:
+                        raise ValueError("Колонка 'К выдаче' не найдена в файле")
+                    except Exception as e:
+                        raise ValueError(f"Ошибка обработки колонки 'К выдаче': {str(e)}")
+                    
+                    if df.empty:
+                        raise ValueError("Нет данных для импорта после фильтрации")
+
+                    # Обработка строк
+                    for index, row in df.iterrows():
+                        try:
+                            # Конвертация единиц измерения
+                            excel_unit = str(row['Единица измерения']).strip().lower()
+                            model_unit = UNIT_CONVERSION.get(excel_unit)
+
+                            if not model_unit:
+                                raise ValueError(
+                                    f"Недопустимая единица измерения: {excel_unit}. "
+                                    f"Допустимые значения: {', '.join(UNIT_CONVERSION.keys())}"
+                                )
+                            
+                            # Создание/получение типа СИЗ
+                            ppe_name = str(row['Наименование группы (краткое)']).strip()
+                            if not ppe_name:
+                                raise ValueError("Пустое значение в колонке 'Наименование группы (краткое)'")
+                            
+                            ppe_type, _ = PPEType.objects.get_or_create(
+                                name=row['Наименование группы (краткое)'],
+                                defaults={'default_mu': row['Единица измерения']}
+                            )
+                            
+                            # Создание нормы
+                            quantity = row['Лимит']
+                            if quantity < 0:
+                                raise ValueError("Лимит не может быть отрицательным")
+
+                            lifespan = row['Срок использования']
+                            if lifespan < 1:
+                                raise ValueError("Срок использования должен быть не менее 1 месяца")
+                            
+                            Norm.objects.create(
+                                position=position,
+                                ppe_type=ppe_type,
+                                quantity=int(row['Лимит']),
+                                lifespan=int(row['Срок использования'])
+                            )
+                            
+                            results['created'].append({
+                                'ppe_type': ppe_type.name,
+                                'quantity': row['Лимит'],
+                                'lifespan': row['Срок использования']
+                            })
+
+                        except Exception as e:
+                            results['errors'].append({
+                                'type': 'row',
+                                'row': index + 2,
+                                'message': str(e),
+                                'data': row.to_dict()
+                            })
+
+                    # Если все строки содержат ошибки
+                    if len(results['errors']) == len(df):
+                        raise ValueError("Все строки содержат ошибки, импорт отменен")
+
+                    return render(request, 'core/import_results.html', {
+                        'position': position,
+                        'results': results
+                    })
+
+            except Exception as e:
+                results['errors'].append({
+                    'type': 'global', 
+                    'message': str(e)
+                })
+                return render(request, 'core/import_results.html', {
+                    'position': position,
+                    'results': results
+                })
+
+    else:
+        form = SAPImportForm()
+
+    return render(request, 'core/sap_import.html', {
+        'position': position,
+        'form': form
+    })
