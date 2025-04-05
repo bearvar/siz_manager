@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Импорт предметов из SAP{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 p-5">
+      <div class="card">
+        <div class="card-header">
+          Импорт предметов для {{ employee.last_name }} {{ employee.first_name }}
+        </div>
+        <div class="card-body">
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group mb-3">
+              <label for="{{ form.sap_file.id_for_label }}">Файл SAP:</label>
+              {{ form.sap_file }}
+              <small class="form-text text-muted">
+                Поддерживаемые форматы: .xlsx, .xls
+              </small>
+            </div>
+            <button type="submit" class="btn btn-primary">Импортировать</button>
+            <a href="{% url 'core:employee_detail' employee.id %}" 
+               class="btn btn-secondary">Отмена</a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Результаты импорта предметов{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-10 p-5">
+      <div class="card">
+        <div class="card-header">
+          Результаты импорта для {{ employee.last_name }} {{ employee.first_name }}
+        </div>
+        
+        <div class="card-body">
+          {% if results.created %}
+            <div class="alert alert-success mb-4">
+              Успешно импортировано: {{ results.created|length }} предметов
+            </div>
+            
+            <h4>Созданные выдачи:</h4>
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Тип СИЗ</th>
+                  <th>Наименование</th>
+                  <th>Количество</th>
+                  <th>Дата списания</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in results.created %}
+                <tr>
+                  <td>{{ item.ppe_type }}</td>
+                  <td>{{ item.item_name }}</td>
+                  <td>{{ item.quantity }}</td>
+                  <td>{{ item.expiration_date|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% endif %}
+
+          {% if results.errors %}
+            <div class="alert alert-{{ results.created|yesno:'warning,danger' }} mb-4">
+              Обнаружено ошибок: {{ results.errors|length }}
+            </div>
+            
+            <h4>Ошибки:</h4>
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Тип</th>
+                  <th>Описание</th>
+                  <th>Данные</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for error in results.errors %}
+                <tr>
+                  <td>
+                    {% if error.type == 'global' %}
+                      <span class="badge bg-danger">Системная</span>
+                    {% else %}
+                      <span class="badge bg-warning">Строка {{ error.row }}</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ error.message }}</td>
+                  <td>
+                    {% if error.data %}
+                      <pre class="m-0">{{ error.data|pprint }}</pre>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% endif %}
+
+          <div class="mt-4 text-center">
+            <a href="{% url 'core:employee_detail' employee.id %}" 
+               class="btn btn-primary">
+              ← Вернуться к сотруднику
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

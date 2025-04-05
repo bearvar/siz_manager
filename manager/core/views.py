@@ -12,7 +12,7 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from .forms import EmployeeForm, IssueCreateForm, NormCreateForm, PositionForm, NormHeightCreateForm, SAPImportForm
+from .forms import EmployeeForm, IssueCreateForm, NormCreateForm, PositionForm, NormHeightCreateForm, SAPImportForm, EmployeeImportItemsForm
 from .models import Employee, Issue, Norm, PPEType, Position, NormHeight, HeightGroup
 from users.models import CustomUser
 from xmlrpc.client import Boolean
@@ -22,6 +22,7 @@ from django.db import transaction
 from django import forms
 import pandas as pd
 from io import BytesIO
+from dateutil import parser
 
 
 logger = logging.getLogger(__name__)
@@ -889,5 +890,156 @@ def sap_import(request, position_id):
 
     return render(request, 'core/sap_import.html', {
         'position': position,
+        'form': form
+    })
+
+@login_required
+def employee_import_items(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    results = {'created': [], 'errors': []}
+
+    if request.method == 'POST':
+        form = EmployeeImportItemsForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    file = request.FILES['sap_file']
+                    
+                    try:
+                        df = pd.read_excel(BytesIO(file.read()))
+                    except Exception as e:
+                        raise ValueError(f"Ошибка чтения файла: {str(e)}")
+
+                    required_columns = [
+                        'Наименование группы СИЗ',
+                        'Наименование ОС',
+                        'Базисная ЕИ',
+                        'Прог.ДатаСписан',
+                        'Срок использования',
+                        'Получено.Количество'  # Добавляем обязательную колонку
+                    ]
+                    
+                    if not set(required_columns).issubset(df.columns):
+                        missing = set(required_columns) - set(df.columns)
+                        raise ValueError(f"Отсутствуют колонки: {', '.join(missing)}")
+
+                    for index, row in df.iterrows():
+                        try:
+                            # Пропускаем строки с нулевым количеством
+                            quantity = int(row['Получено.Количество'])
+                            if quantity <= 0:
+                                continue
+
+                            # Проверка типа СИЗ
+                            ppe_name = str(row['Наименование группы СИЗ']).strip()
+                            if not ppe_name:
+                                raise ValueError("Пустое название типа СИЗ")
+                            
+                            ppe_type = PPEType.objects.get(name__iexact=ppe_name)
+                            
+                            # Проверка существования нормы
+                            norm_exists = False
+                            if employee.position:
+                                norm_exists = Norm.objects.filter(
+                                    position=employee.position, 
+                                    ppe_type=ppe_type
+                                ).exists()
+                            
+                            if not norm_exists and employee.height_group:
+                                norm_exists = NormHeight.objects.filter(
+                                    height_group=employee.height_group,
+                                    ppe_type=ppe_type
+                                ).exists()
+                            
+                            if not norm_exists:
+                                raise ValueError(f"Нет нормы для типа СИЗ: {ppe_name}")
+                            
+                            # Конвертация единиц измерения
+                            excel_unit = str(row['Базисная ЕИ']).strip().lower()
+                            model_unit = UNIT_CONVERSION.get(excel_unit)
+                            if not model_unit:
+                                raise ValueError(f"Недопустимая единица измерения: {excel_unit}")
+
+                            # Обработка дат
+                            expiration_date = None
+                            if pd.notna(row['Прог.ДатаСписан']):
+                                try:
+                                    expiration_date = parser.parse(str(row['Прог.ДатаСписан'])).date()
+                                except:
+                                    raise ValueError("Неверный формат даты списания")
+
+                            # Расчет даты выдачи
+                            issue_date = None
+                            if pd.notna(row['Срок использования']):
+                                lifespan_months = int(row['Срок использования'])
+                                if expiration_date:
+                                    issue_date = expiration_date - relativedelta(months=lifespan_months)
+                                else:
+                                    issue_date = date.today()
+
+                            # Создание нескольких выдач
+                            for _ in range(quantity):
+                                Issue.objects.create(
+                                    employee=employee,
+                                    ppe_type=ppe_type,
+                                    item_name=row['Наименование ОС'],
+                                    item_mu=model_unit,
+                                    issue_date=issue_date,
+                                    expiration_date=expiration_date,
+                                    item_size=None
+                                )
+                            
+                            results['created'].append({
+                                'ppe_type': ppe_type.name,
+                                'item_name': row['Наименование ОС'],
+                                'quantity': quantity,
+                                'expiration_date': expiration_date
+                            })
+
+                        except ValueError as e:
+                            if 'Получено.Количество' in str(e):
+                                results['errors'].append({
+                                    'type': 'row',
+                                    'row': index + 2,
+                                    'message': f"Некорректное количество: {row['Получено.Количество']}",
+                                    'data': row.to_dict()
+                                })
+                            else:
+                                raise e
+                        except PPEType.DoesNotExist:
+                            results['errors'].append({
+                                'type': 'row',
+                                'row': index + 2,
+                                'message': f"Тип СИЗ '{ppe_name}' не найден",
+                                'data': row.to_dict()
+                            })
+                        except Exception as e:
+                            results['errors'].append({
+                                'type': 'row',
+                                'row': index + 2,
+                                'message': str(e),
+                                'data': row.to_dict()
+                            })
+
+                    return render(request, 'core/import_item_results.html', {
+                        'employee': employee,
+                        'results': results
+                    })
+
+            except Exception as e:
+                results['errors'].append({
+                    'type': 'global', 
+                    'message': str(e)
+                })
+                return render(request, 'core/import_item_results.html', {
+                    'employee': employee,
+                    'results': results
+                })
+
+    else:
+        form = EmployeeImportItemsForm()
+
+    return render(request, 'core/employee_import_items.html', {
+        'employee': employee,
         'form': form
     })

@@ -248,4 +248,10 @@ class SAPImportForm(forms.Form):
         label='Файл SAP',
         help_text='Выберите файл в формате CSV/XLSX для импорта'
     )
-    
+
+
+class EmployeeImportItemsForm(forms.Form):
+    sap_file = forms.FileField(
+        label='Файл SAP',
+        help_text='Выберите файл в формате CSV/XLSX для импорта предметов'
+    )
