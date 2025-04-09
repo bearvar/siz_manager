@@ -3,15 +3,10 @@
 {% block title %}
   Группы работ на высоте
 {% endblock %}
+{% load static %}{% load static %}
 
 {% block content %}
-  <style>
-    .wider-table {
-      max-width: 60%;
-      margin: 0 auto;
-    }
-  </style>
-  <div class="container-fluid py-3 wider-table">
+  <div class="container-fluid py-3" style="max-width: 90%;">
     <article>
       <div class="card mt-4">
       <div class="card-body">
@@ -19,7 +14,7 @@
         <table class="table table-striped">
           <thead>
             <tr>
-              <th class="text-center">Группа</th>
+              <th class="text-center">Группа безопасности работ на высоте</th>
               <th class="text-center">Действия</th>
             </tr>
           </thead>

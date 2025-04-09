@@ -3,15 +3,11 @@
 {% block title %}
   Список работников
 {% endblock %}
+{% load static %}
 
 {% block content %}
-  <style>
-    .wider-table {
-      max-width: 90%;
-      margin: 0 auto;
-    }
-  </style>
-  <div class="container-fluid py-3 wider-table">
+
+  <div class="container-fluid py-3" style="max-width: 90%;">
     <article>
       <div class="card mt-4">
       <div class="card-body">

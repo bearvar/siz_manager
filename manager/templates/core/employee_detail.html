@@ -3,26 +3,10 @@
 {% block title %}
   Детали работника
 {% endblock %}
-
-<style>
-  .wider-table {
-    max-width: 90%;
-    margin: 0 auto;
-  }
-  .table-striped td {
-    word-wrap: break-word; /* Перенос слов */
-    white-space: normal; /* Перенос строк */
-  }
-</style>
+{% load static %}
 
 {% block content %}
-  <style>
-    .wider-table {
-      max-width: 90%;
-      margin: 0 auto;
-    }
-  </style>
-  <div class="container-fluid py-3 wider-table">
+  <div class="container-fluid py-3" style="max-width: 90%;">
     <article>
       <div class="card-body">
         {% include 'includes/messages.html' %}

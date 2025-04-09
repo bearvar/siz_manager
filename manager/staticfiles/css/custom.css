@@ -119,3 +119,45 @@
   width: 3px;
   height: 90%;
 }
+
+.fixed-select {
+  width: 100% !important;
+  max-width: 400px;
+}
+
+.fixed-select option {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  max-width: 100% !important;
+  padding: 5px 8px;
+  line-height: 1.4;
+}
+
+.wider-table {
+  max-width: 80%;
+  margin: 0 auto;
+}
+.table-striped td {
+  word-wrap: break-word; /* Перенос слов */
+  white-space: normal; /* Перенос строк */
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.error-text {
+  color: #dc3545;
+  font-size: 0.9em;
+  margin-top: 5px;
+  width: 100%;
+}
+.action-buttons {
+  display: flex;
+  justify-content: center; /* Centers the buttons horizontally */
+  gap: 0.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}

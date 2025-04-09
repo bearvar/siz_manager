@@ -3,35 +3,13 @@
 {% block title %}
   Список должностей
 {% endblock %}
+{% load static %}
 
 {% block content %}
-  <style>
-    .wider-table {
-      max-width: 70%;
-      margin: 0 auto;
-    }
-    .action-buttons {
-      display: flex;
-      gap: 0.5rem;
-      align-items: flex-start;
-      flex-wrap: wrap;
-    }
-    .error-text {
-      color: #dc3545;
-      font-size: 0.9em;
-      margin-top: 5px;
-      width: 100%;
-    }
-    .action-buttons {
-      display: flex;
-      justify-content: center; /* Centers the buttons horizontally */
-      gap: 0.5rem;
-      align-items: flex-start;
-      flex-wrap: wrap;
-    }
-  </style>
-  <div class="container-fluid py-3 wider-table">
-    <article>
+  <div class="container-fluid py-3" style="max-width: 90%;">
+    <div class="row justify-content-center">
+      <div class="col-md-8 p-3">
+        <article>
       <div class="card mt-4">
       <div class="card-body">
         {% include 'includes/messages.html' %}
@@ -102,6 +80,8 @@
         </table>
       </div>
     </div>
-    </article>
+        </article>
+      </div>
+    </div>
   </div>
 {% endblock %}

@@ -1,21 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Добавить норму выдачи{% endblock %}
-
-<style>
-  /* Добавьте это в секцию head или в ваш основной CSS файл */
-  .fixed-select {
-    width: 100% !important;
-    max-width: 400px; /* Регулируйте по необходимости */
-  }
-  
-  .fixed-select option {
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    max-width: 100% !important;
-    padding: 5px 8px;
-    line-height: 1.4;
-  }
-</style>
+{% load static %}
 
 {% block content %}
 <div class="container py-3">
