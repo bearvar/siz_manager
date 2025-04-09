@@ -25,6 +25,7 @@ urlpatterns = [
     path('issue/update/<int:issue_id>/', views.issue_update, name='issue_update'),
     path('issue/delete/<int:issue_id>/', views.issue_delete, name='issue_delete'),
     path('employees/<int:employee_id>/edit/', views.edit_employee, name='edit_employee'),
+    path('employees/<int:employee_id>/delete/', views.delete_employee, name='delete_employee'),
     path('employees/<int:employee_id>/quarterly_needs/', views.quarterly_ppe_needs, name='quarterly_needs'),
     path('employees/<int:employee_id>/expiring_issues/', views.expiring_ppe_issues, name='expiring_issues'),
     

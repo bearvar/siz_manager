@@ -12,7 +12,8 @@ from django.contrib.auth.decorators import login_required
 from django.urls import reverse_lazy
 
 # Импортируем класс формы, чтобы сослаться на неё во view-классе
-from .forms import CreationForm
+from .forms import CreationForm, CustomPasswordChangeForm, CustomPasswordResetForm, CustomSetPasswordForm
+
 
 
 class SignUp(CreateView):
@@ -24,7 +25,7 @@ class SignUp(CreateView):
 class RegistrationSuccessView(TemplateView):
     template_name = 'users/registration_success.html'
 
-#@login_required
 class ChangePassword(PasswordChangeView):
+    form_class = CustomPasswordChangeForm
     success_url = reverse_lazy('users:password_change_done')
     template_name = 'users/password_change_form.html'

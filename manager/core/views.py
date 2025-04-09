@@ -1131,3 +1131,23 @@ def employee_import_items(request, employee_id):
         'employee': employee,
         'form': form
     })
+
+@login_required
+@require_http_methods(["POST"])
+def delete_employee(request, employee_id):
+    logger.info(f"Delete employee request received for employee_id: {employee_id}")
+    try:
+        employee = get_object_or_404(Employee, id=employee_id)
+        logger.info(f"Found employee: {employee}")
+        # Delete all related issues first
+        issues_count = employee.issues.all().delete()
+        logger.info(f"Deleted {issues_count} issues")
+        # Then delete the employee
+        employee.delete()
+        logger.info("Employee deleted successfully")
+        messages.success(request, f'Сотрудник {employee} и все выданные ему СИЗ успешно удалены.')
+        return redirect('core:employee_list')
+    except Exception as e:
+        logger.error(f"Error deleting employee: {str(e)}")
+        messages.error(request, f'Ошибка при удалении сотрудника: {str(e)}')
+        return redirect('core:employee_detail', employee_id=employee_id)

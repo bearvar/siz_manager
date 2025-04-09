@@ -182,12 +182,90 @@
           </tbody>
         </table>
 
-        <div class="text-center mt-4">
+        <div class="text-center mt-3 mb-3">
           <button type="submit" class="btn btn-primary">Сохранить все изменения</button>
+          <button type="button" class="btn btn-danger" id="deleteButton">Удалить сотрудника</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">Подтверждение удаления</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Вы уверены, что хотите удалить сотрудника {{ employee }}?<br>
+        Это действие также удалит все выданные ему СИЗ и не может быть отменено.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <form method="POST" action="{% url 'core:delete_employee' employee_id=employee.id %}" id="deleteForm">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Удалить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  (function() {
+    console.log('Initializing delete functionality');
+    
+    const deleteButton = document.getElementById('deleteButton');
+    const deleteModal = document.getElementById('deleteModal');
+    const deleteForm = document.getElementById('deleteForm');
+    
+    if (!deleteButton || !deleteModal || !deleteForm) {
+      console.error('Required elements not found');
+      return;
+    }
+    
+    // Initialize modal
+    const modal = new bootstrap.Modal(deleteModal);
+    
+    // Show modal when delete button is clicked
+    deleteButton.addEventListener('click', function() {
+      console.log('Delete button clicked');
+      modal.show();
+    });
+    
+    // Handle form submission
+    deleteForm.addEventListener('submit', function(e) {
+      console.log('Form submission started');
+      e.preventDefault();
+      
+      const formData = new FormData(this);
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      
+      console.log('Sending delete request');
+      fetch(this.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-CSRFToken': csrfToken
+        },
+        credentials: 'same-origin'
+      }).then(response => {
+        console.log('Response received:', response);
+        if (response.redirected) {
+          console.log('Redirecting to:', response.url);
+          window.location.href = response.url;
+        }
+      }).catch(error => {
+        console.error('Error:', error);
+      });
+    });
+  })();
+</script>
+{% endblock %}
+
 {% endblock %}

@@ -6,9 +6,9 @@ from django.contrib.auth.views import (LogoutView, LoginView,
 from . import views
 
 from django.views import View
-from .views import SignUp, RegistrationSuccessView
 from django.http import HttpResponseRedirect
 from django.urls import reverse_lazy
+from .forms import CreationForm, CustomPasswordChangeForm, CustomPasswordResetForm, CustomSetPasswordForm
 
 
 app_name = 'users'
@@ -26,7 +26,7 @@ urlpatterns = [
     path('signup/', views.SignUp.as_view(), name='signup'),
     path(
         'registration_success/',
-        RegistrationSuccessView.as_view(),
+        views.RegistrationSuccessView.as_view(),
         name='registration_success'),
     path(
         'logout/',
@@ -41,7 +41,8 @@ urlpatterns = [
     path(
         'password_change/',
         views.ChangePassword.as_view(
-            template_name='users/password_change_form.html'),
+            template_name='users/password_change_form.html'
+        ),
         name='password_change'
     ),
     path(
@@ -53,7 +54,9 @@ urlpatterns = [
     path(
         'password_reset',
         PasswordResetView.as_view(
-            template_name='users/password_reset_form.html'),
+            template_name='users/password_reset_form.html',
+            form_class=CustomPasswordResetForm
+        ),
         name='password_reset_form'
     ),
     path(
@@ -65,7 +68,9 @@ urlpatterns = [
     path(
         'reset/<uidb64>/<token>/',
         PasswordResetConfirmView.as_view(
-            template_name='users/password_reset_confirm.html'),
+            template_name='users/password_reset_confirm.html',
+            form_class=CustomSetPasswordForm
+        ),
         name='password_reset_confirm'
     ),
     path(
