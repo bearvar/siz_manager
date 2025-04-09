@@ -81,11 +81,31 @@ def index(request):
         # Формируем структуру данных для шаблона
         employees_list = []
         for employee, items in employees_issues.items():
+            # Group duplicate issues within each employee's items
+            grouped = defaultdict(list)
+            for issue in items:
+                key = (issue.ppe_type_id, issue.item_name, issue.item_size, issue.issue_date, issue.expiration_date)
+                grouped[key].append(issue)
+            
+            # Create a list of groups with a sample issue and quantity
+            issue_groups = [
+                {'issue': group[0], 'quantity': len(group)} for key, group in grouped.items()
+            ]
+            # Sort groups by expiration_date to maintain order
+            issue_groups = sorted(issue_groups, key=lambda x: x['issue'].expiration_date)
+            
             employees_list.append({
                 'employee': employee,
-                'issues': items,
-                'count': len(items)
+                'issue_groups': issue_groups,
+                'count': len(items)  # Total number of items (sum of quantities)
             })
+            
+            
+            # employees_list.append({
+            #     'employee': employee,
+            #     'issues': items,
+            #     'count': len(items)
+            # })
         
         quarterly_data.append({
             'quarter': q['quarter'],
