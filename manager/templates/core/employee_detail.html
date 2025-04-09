@@ -31,24 +31,24 @@
         <table class="table table-striped">
           <thead>
             <tr>
-              <th>Должность</th>
-              <th>Группа по высоте</th>
-              <th>Подразделение</th>
-              <th>Размер спецодежды</th>
-              <th>Размер головного убора</th>
-              <th>Размер перчаток</th>
-              <th>Размер обуви</th>
+              <th class="text-center">Должность</th>
+              <th class="text-center">Группа по высоте</th>
+              <th class="text-center">Подразделение</th>
+              <th class="text-center">Размер спецодежды</th>
+              <th class="text-center">Размер головного убора</th>
+              <th class="text-center">Размер перчаток</th>
+              <th class="text-center">Размер обуви</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>{{ employee.position }}</td>
-              <td>{{ employee.height_group|default:"-" }}</td>
-              <td>{{ employee.department }}</td>
-              <td>{{ employee.body_size }}</td>
-              <td>{{ employee.head_size }}</td>
-              <td>{{ employee.glove_size }}</td>
-              <td>{{ employee.shoe_size }}</td>
+              <td class="text-center">{{ employee.position }}</td>
+              <td class="text-center">{{ employee.height_group|default:"-" }}</td>
+              <td class="text-center">{{ employee.department }}</td>
+              <td class="text-center">{{ employee.body_size }}</td>
+              <td class="text-center">{{ employee.head_size }}</td>
+              <td class="text-center">{{ employee.glove_size }}</td>
+              <td class="text-center">{{ employee.shoe_size }}</td>
             </tr>
           </tbody>
         </table>
@@ -58,19 +58,19 @@
           <table class="table table-striped">
             <thead>
               <tr>
-                <th>Тип СИЗ</th>
-                <th>Требуется</th>
-                <th>Фактически</th>
-                <th>Статус</th>
+                <th class="text-center">Тип СИЗ</th>
+                <th class="text-center">Требуется</th>
+                <th class="text-center">Фактически</th>
+                <th class="text-center">Статус</th>
               </tr>
             </thead>
             <tbody>
               {% for norm in norms_status %}
                 <tr>
                   <td style="word-wrap: break-word; white-space: normal;">{{ norm.ppe_type }}</td>
-                  <td>{{ norm.required }}</td>
-                  <td>{{ norm.actual }}</td>
-                  <td>{{ norm.status }}</td>
+                  <td class="text-center">{{ norm.required }}</td>
+                  <td class="text-center">{{ norm.actual }}</td>
+                  <td class="text-center">{{ norm.status }}</td>
                 </tr>
               {% empty %}
                 <tr>
@@ -87,11 +87,11 @@
         <table class="table table-striped">
           <thead>
             <tr>
-              <th>Тип</th>
-              <th>Наименование</th>
-              <th>Размер</th>
-              <th>Дата выдачи</th>
-              <th>Дата списания</th>
+              <th class="text-center">Тип</th>
+              <th class="text-center">Наименование</th>
+              <th class="text-center">Размер</th>
+              <th class="text-center">Дата выдачи</th>
+              <th class="text-center">Дата списания</th>
             </tr>
           </thead>
           <tbody>
@@ -99,9 +99,9 @@
               <tr>
                 <td style="word-wrap: break-word; white-space: normal;">{{ issue.ppe_type.name }}</td>
                 <td>{{ issue.item_name }}</td>
-                <td>{{ issue.item_size }}</td>
-                <td>{{ issue.issue_date }}</td>
-                <td>{{ issue.expiration_date }}</td>
+                <td class="text-center">{{ issue.item_size }}</td>
+                <td class="text-center">{{ issue.issue_date|date:"d.m.Y"|default_if_none:"" }}</td>
+                <td class="text-center">{{ issue.expiration_date|date:"d.m.Y"|default_if_none:"" }}</td>
               </tr>
             {% empty %}
               <tr>

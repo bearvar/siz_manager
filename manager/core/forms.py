@@ -46,7 +46,7 @@ class PositionForm(forms.ModelForm):
 class NormCreateForm(forms.ModelForm):
     ppe_type_name = forms.CharField(
         label="Тип СИЗ",
-        help_text="Введите название существующего типа или создайте новый",
+        help_text="Введите название типа СИЗ",
         max_length=255
     )
 

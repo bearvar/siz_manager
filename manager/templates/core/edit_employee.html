@@ -4,179 +4,204 @@
   Редактирование сотрудника
 {% endblock %}
 
+<style>
+  /* Добавьте это в секцию head или в ваш основной CSS файл */
+  .fixed-select {
+    width: 100% !important;
+    max-width: 400px; /* Регулируйте по необходимости */
+  }
+  
+  .fixed-select option {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    max-width: 100% !important;
+    padding: 5px 8px;
+    line-height: 1.4;
+  }
+  
+</style>
+
 {% block content %}
 <div class="container py-5">
-  {% include 'includes/messages.html' %}
-  <h1>Редактирование сотрудника: {{ employee }}</h1>
-  <a href="{% url 'core:employee_detail' employee_id=employee.id %}" class="btn btn-secondary mb-3">← Назад</a>
-  
-  <form method="post">
-    {% csrf_token %}
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>Поле</th>
-          <th>Текущее значение</th>
-          <th>Новое значение</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Основные поля -->
+  <div class="row justify-content-center">
+    <h3>Редактирование сотрудника: {{ employee }}</h3>
+    <div class="col-md-8 p-3">
+      <a href="{% url 'core:employee_detail' employee_id=employee.id %}" class="btn btn-secondary mb-3">← Назад</a>
+      <div class="card">
+      {% include 'includes/messages.html' %}
+        
+        
+      {% load user_filters %}
+      <form method="post">
+        {% csrf_token %}
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Поле</th>
+              <th>Текущее значение</th>
+              <th>Новое значение</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Основные поля -->
 
-        <tr>
-          <td>Фамилия</td>
-          <td>{{ employee.last_name }}</td>
-          <td>
-            <input type="text" 
-                   name="last_name" 
-                   value="{{ employee.last_name }}" 
-                   class="form-control form-control-sm"
-                   required>
-          </td>
-        </tr>
+            <tr>
+              <td>Фамилия</td>
+              <td>{{ employee.last_name}}</td>
+              <td>
+                <input type="text" 
+                       name="last_name" 
+                       value="{{ employee.last_name }}" 
+                       class="form-control form-control-sm"
+                       required>
+              </td>
+            </tr>
 
-        <tr>
-          <td>Имя</td>
-          <td>{{ employee.first_name }}</td>
-          <td>
-            <input type="text" 
-                   name="first_name" 
-                   value="{{ employee.first_name }}" 
-                   class="form-control form-control-sm"
-                   required>
-          </td>
-        </tr>
+            <tr>
+              <td>Имя</td>
+              <td>{{ employee.first_name }}</td>
+              <td>
+                <input type="text" 
+                       name="first_name" 
+                       value="{{ employee.first_name }}" 
+                       class="form-control form-control-sm"
+                       required>
+              </td>
+            </tr>
 
-        <tr>
-          <td>Отчество</td>
-          <td>{{ employee.patronymic }}</td>
-          <td>
-            <input type="text" 
-                   name="patronymic" 
-                   value="{{ employee.patronymic }}" 
-                   class="form-control form-control-sm">
-          </td>
-        </tr>
+            <tr>
+              <td>Отчество</td>
+              <td>{{ employee.patronymic }}</td>
+              <td>
+                <input type="text" 
+                       name="patronymic" 
+                       value="{{ employee.patronymic }}" 
+                       class="form-control form-control-sm">
+              </td>
+            </tr>
 
-        <!-- Должность -->
-        <tr>
-          <td>Должность</td>
-          <td>{{ employee.position.position_name|default:"Не указана" }}</td>
-          <td>
-            <select name="position" class="form-select form-select-sm">
-              <option value="">---</option>
-              {% for position in positions %}
-                <option value="{{ position.id }}" 
-                  {% if employee.position.id == position.id %}selected{% endif %}>
-                  {{ position.position_name }}
-                </option>
-              {% endfor %}
-            </select>
-          </td>
-        </tr>
+            <!-- Должность -->
+            <tr>
+              <td>Должность</td>
+              <td>{{ employee.position.position_name|default:"Не указана" }}</td>
+              <td>
+                <select name="position" class="form-control form-select-sm fixed-select">
+                  <option value="">---</option>
+                  {% for position in positions %}
+                    <option value="{{ position.id }}" 
+                      {% if employee.position.id == position.id %}selected{% endif %}>
+                      {{ position.position_name }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </td>
+            </tr>
 
-        <!-- Группа высоты -->
-        <tr>
-          <td>Группа высоты</td>
-          <td>{{ employee.height_group|default:"Не назначена" }}</td>
-          <td>
-            <select name="height_group" class="form-select form-select-sm">
-              <option value="">---</option>
-              {% for group in height_groups %}
-                <option value="{{ group.id }}" 
-                  {% if employee.height_group.id == group.id %}selected{% endif %}>
-                  Группа {{ group.level }}
-                </option>
-              {% endfor %}
-            </select>
-            <small class="form-text text-muted">
-              Назначается только при наличии должности
-            </small>
-          </td>
-        </tr>
+            <!-- Группа высоты -->
+            <tr>
+              <td>Группа высоты</td>
+              <td>{{ employee.height_group|default:"Не назначена" }}</td>
+              <td>
+                <select name="height_group" class="form-control form-select-sm fixed-select">
+                  <option value="">---</option>
+                  {% for group in height_groups %}
+                    <option value="{{ group.id }}" 
+                      {% if employee.height_group.id == group.id %}selected{% endif %}>
+                      Группа {{ group.level }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <small class="form-text text-muted">
+                  Назначается только при наличии должности
+                </small>
+              </td>
+            </tr>
 
-        <!-- Подразделение -->
-        <tr>
-          <td>Подразделение</td>
-          <td>{{ employee.department }}</td>
-          <td>
-            <input type="text" 
-                   name="department" 
-                   value="{{ employee.department }}" 
-                   class="form-control form-control-sm">
-          </td>
-        </tr>
+            <!-- Подразделение -->
+            <tr>
+              <td>Подразделение</td>
+              <td>{{ employee.department }}</td>
+              <td>
+                <input type="text" 
+                       name="department" 
+                       value="{{ employee.department }}" 
+                       class="form-control form-control-sm">
+              </td>
+            </tr>
 
-        <!-- Размеры -->
-        <tr>
-          <td>Размер спецодежды</td>
-          <td>{{ employee.body_size }}</td>
-          <td>
-            <select name="body_size" class="form-select form-select-sm">
-              <option value="">---</option>
-              {% for value, label in body_size_choices %}
-                <option value="{{ value }}" 
-                  {% if employee.body_size == value %}selected{% endif %}>
-                  {{ label }}
-                </option>
-              {% endfor %}
-            </select>
-          </td>
-        </tr>
+            <!-- Размеры -->
+            <tr>
+              <td>Размер спецодежды</td>
+              <td>{{ employee.body_size }}</td>
+              <td>
+                <select name="body_size" class="form-control form-select-sm fixed-select">
+                  <option value="">---</option>
+                  {% for value, label in body_size_choices %}
+                    <option value="{{ value }}" 
+                      {% if employee.body_size == value %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </td>
+            </tr>
 
-        <tr>
-          <td>Размер головного убора</td>
-          <td>{{ employee.head_size }}</td>
-          <td>
-            <select name="head_size" class="form-select form-select-sm">
-              <option value="">---</option>
-              {% for value, label in head_size_choices %}
-                <option value="{{ value }}" 
-                  {% if employee.head_size == value %}selected{% endif %}>
-                  {{ label }}
-                </option>
-              {% endfor %}
-            </select>
-          </td>
-        </tr>
+            <tr>
+              <td>Размер головного убора</td>
+              <td>{{ employee.head_size }}</td>
+              <td>
+                <select name="head_size" class="form-control form-select-sm fixed-select">
+                  <option value="">---</option>
+                  {% for value, label in head_size_choices %}
+                    <option value="{{ value }}" 
+                      {% if employee.head_size == value %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </td>
+            </tr>
 
-        <tr>
-          <td>Размер перчаток</td>
-          <td>{{ employee.glove_size }}</td>
-          <td>
-            <select name="glove_size" class="form-select form-select-sm">
-              <option value="">---</option>
-              {% for value, label in glove_size_choices %}
-                <option value="{{ value }}" 
-                  {% if employee.glove_size == value %}selected{% endif %}>
-                  {{ label }}
-                </option>
-              {% endfor %}
-            </select>
-          </td>
-        </tr>
+            <tr>
+              <td>Размер перчаток</td>
+              <td>{{ employee.glove_size }}</td>
+              <td>
+                <select name="glove_size" class="form-control form-select-sm fixed-select">
+                  <option value="">---</option>
+                  {% for value, label in glove_size_choices %}
+                    <option value="{{ value }}" 
+                      {% if employee.glove_size == value %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </td>
+            </tr>
 
-        <tr>
-          <td>Размер обуви</td>
-          <td>{{ employee.shoe_size }}</td>
-          <td>
-            <select name="shoe_size" class="form-select form-select-sm">
-              <option value="">---</option>
-              {% for value, label in shoe_size_choices %}
-                <option value="{{ value }}" 
-                  {% if employee.shoe_size == value %}selected{% endif %}>
-                  {{ label }}
-                </option>
-              {% endfor %}
-            </select>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+            <tr>
+              <td>Размер обуви</td>
+              <td>{{ employee.shoe_size }}</td>
+              <td>
+                <select name="shoe_size" class="form-control form-select-sm fixed-select">
+                  <option value="">---</option>
+                  {% for value, label in shoe_size_choices %}
+                    <option value="{{ value }}" 
+                      {% if employee.shoe_size == value %}selected{% endif %}>
+                      {{ label }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-    <div class="text-center mt-4">
-      <button type="submit" class="btn btn-primary">Сохранить все изменения</button>
+        <div class="text-center mt-4">
+          <button type="submit" class="btn btn-primary">Сохранить все изменения</button>
+        </div>
+      </form>
     </div>
-  </form>
+  </div>
+</div>
 </div>
 {% endblock %}

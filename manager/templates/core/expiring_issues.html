@@ -3,9 +3,10 @@
 {% block content %}
 <div class="container mt-4">
     <h3>СИЗ с истекающим сроком для {{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h3>
-    
+    <a href="{% url 'core:employee_detail' employee_id=employee.id %}" class="btn btn-secondary mt-3">Назад</a>
     {% for quarter in quarterly_issues %}
     <div class="card mt-4">
+        
         {% include 'includes/messages.html' %}
         <div class="card-header bg-light">
             <h4 class="mb-0">
@@ -55,6 +56,5 @@
     </div>
     {% endfor %}
     
-    <a href="{% url 'core:employee_detail' employee_id=employee.id %}" class="btn btn-secondary mt-3">Назад</a>
 </div>
 {% endblock %}

@@ -1,11 +1,28 @@
 {% extends 'base.html' %}
 {% block title %}Добавить норму выдачи{% endblock %}
 
+<style>
+  /* Добавьте это в секцию head или в ваш основной CSS файл */
+  .fixed-select {
+    width: 100% !important;
+    max-width: 400px; /* Регулируйте по необходимости */
+  }
+  
+  .fixed-select option {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    max-width: 100% !important;
+    padding: 5px 8px;
+    line-height: 1.4;
+  }
+</style>
+
 {% block content %}
 <div class="container py-5">
   <div class="row justify-content-center">
-    <div class="col-md-8 p-5">
+    <div class="col-md-6 p-3">
       <div class="card">
+        {% load user_filters %}
         {% include 'includes/messages.html' %}
         <div class="card-header">Добавить норму выдачи</div>
         <div class="card-body">
@@ -26,7 +43,7 @@
             <!-- Единое поле для типа СИЗ -->
             <div class="form-group mb-4">
               <label for="{{ form.ppe_type_name.id_for_label }}">Тип СИЗ</label>
-              {{ form.ppe_type_name }}
+              {{ form.ppe_type_name|addclass:"form-control fixed-select" }}
               <small class="form-text text-muted">
                 Введите существующее название или создайте новое. Пример: "Перчатки", "Каска"
               </small>
@@ -42,7 +59,7 @@
             <!-- Поле для количества -->
             <div class="form-group mb-4">
               <label for="{{ form.quantity.id_for_label }}">Количество</label>
-              {{ form.quantity }}
+              {{ form.quantity|addclass:"form-control fixed-select" }}
               <small class="form-text text-muted">
                 Укажите количество
               </small>
@@ -51,7 +68,7 @@
             <!-- Поле для срока годности -->
             <div class="form-group mb-4">
               <label for="{{ form.lifespan.id_for_label }}">Срок годности</label>
-              {{ form.lifespan }}
+              {{ form.lifespan|addclass:"form-control fixed-select" }}
               <small class="form-text text-muted">
                 Укажите срок использования в месяцах (пример: 12, 24)
               </small>

@@ -96,7 +96,7 @@
                 {% endif %}
               </label>
               <div class="col-md-8">
-                {{ form.item_name }}
+                {{ form.item_name|addclass:"form-control fixed-select" }}
                 {% if form.item_name.help_text %}
                   <small id="{{ form.item_name.id_for_label }}-help" class="form-text text-muted">
                     {{ form.item_name.help_text|safe }}
@@ -114,7 +114,7 @@
                 {% endif %}
               </label>
               <div class="col-md-8">
-                {{ form.item_size}}
+                {{ form.item_size|addclass:"form-control fixed-select" }}
                 {% if form.item_size.help_text %}
                   <small id="{{ form.item_size.id_for_label }}-help" class="form-text text-muted">
                     {{ form.item_size.help_text|safe }}
@@ -150,7 +150,7 @@
                 {% endif %}
               </label>
               <div class="col-md-8">
-                {{ form.quantity}}
+                {{ form.quantity|addclass:"form-control fixed-select" }}
                 {% if form.quantity.help_text %}
                   <small id="{{ form.quantity.id_for_label }}-help" class="form-text text-muted">
                     {{ form.quantity.help_text|safe }}

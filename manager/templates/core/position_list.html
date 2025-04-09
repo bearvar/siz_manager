@@ -22,9 +22,17 @@
       margin-top: 5px;
       width: 100%;
     }
+    .action-buttons {
+      display: flex;
+      justify-content: center; /* Centers the buttons horizontally */
+      gap: 0.5rem;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
   </style>
   <div class="container-fluid py-3 wider-table">
     <article>
+      <div class="card mt-4">
       <div class="card-body">
         {% include 'includes/messages.html' %}
         
@@ -33,20 +41,20 @@
         <table class="table table-striped">
           <thead>
             <tr>
-              <th>Название должности</th>
-              <th>Действия</th>
+              <th class="text-center">Название должности</th>
+              <th class="text-center">Действия</th>
             </tr>
           </thead>
           <tbody>
           {% for position in positions %}
             <tr>
-              <td>
+              <td class="text-center">
                 <a href="{% url 'core:position_detail' position_id=position.id %}">
                   {{ position.position_name }}
                 </a>
               </td>
-              <td>
-                <div class="action-buttons">
+              <td class="text-center">
+                <div class="action-buttons"> <!-- HOW TO ALIGN THIS BLOCK CENTER? -->
                   <!-- Основные кнопки -->
                   <a href="{% url 'core:norm_create' position_id=position.id %}" 
                      class="btn btn-primary btn-sm">
@@ -93,6 +101,7 @@
           </tbody>
         </table>
       </div>
+    </div>
     </article>
   </div>
 {% endblock %}
