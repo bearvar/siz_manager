@@ -90,27 +90,25 @@
               <th class="text-center">Тип</th>
               <th class="text-center">Наименование</th>
               <th class="text-center">Размер</th>
-              <th class="text-center">Количество</th>
               <th class="text-center">Дата выдачи</th>
               <th class="text-center">Дата списания</th>
             </tr>
           </thead>
           <tbody>
-            {% for group in issue_groups %}  <!-- Changed from 'issues' -->
-                <tr>
-                    <td style="word-wrap: break-word; white-space: normal;">{{ group.issue.ppe_type.name }}</td>
-                    <td>{{ group.issue.item_name }}</td>
-                    <td class="text-center">{{ group.issue.item_size }}</td>
-                    <td class="text-center">{{ group.quantity }}</td>  <!-- Quantity -->
-                    <td class="text-center">{{ group.issue.issue_date|date:"d.m.Y"|default_if_none:"" }}</td>
-                    <td class="text-center">{{ group.issue.expiration_date|date:"d.m.Y"|default_if_none:"" }}</td>
-                </tr>
+            {% for issue in issues %}
+              <tr>
+                <td style="word-wrap: break-word; white-space: normal;">{{ issue.ppe_type.name }}</td>
+                <td>{{ issue.item_name }}</td>
+                <td class="text-center">{{ issue.item_size }}</td>
+                <td class="text-center">{{ issue.issue_date|date:"d.m.Y"|default_if_none:"" }}</td>
+                <td class="text-center">{{ issue.expiration_date|date:"d.m.Y"|default_if_none:"" }}</td>
+              </tr>
             {% empty %}
-                <tr>
-                    <td colspan="6">Нет выданных предметов.</td>  <!-- Updated colspan -->
-                </tr>
+              <tr>
+                <td colspan="2">Нет выданных предметов.</td>
+              </tr>
             {% endfor %}
-        </tbody>
+          </tbody>
         </table>
 
         <a href="{% url 'core:create_issue' employee_id=employee.id %}" class="btn btn-secondary">Выдать новый предмет</a>

@@ -227,25 +227,6 @@ def employee_detail(request, employee_id):
     norms_status = []
     today = date.today()
     
-    # Group duplicate issues
-    grouped_issues = defaultdict(list)
-    for issue in all_issues:
-        key = (
-            issue.ppe_type_id,
-            issue.item_name,
-            issue.item_size,
-            issue.issue_date,
-            issue.expiration_date
-        )
-        grouped_issues[key].append(issue)
-    
-    # Create groups with quantity and sort by expiration date
-    issue_groups = [
-        {'issue': group[0], 'quantity': len(group)}
-        for key, group in grouped_issues.items()
-    ]
-    issue_groups.sort(key=lambda x: x['issue'].expiration_date)
-    
     # Собираем все применимые нормы
     norms = []
     if employee.position:
@@ -322,8 +303,7 @@ def employee_detail(request, employee_id):
     
     context = {
         'employee': employee,
-        'issue_groups': issue_groups,
-        # 'issues': all_issues,
+        'issues': all_issues,
         'norms_status': norms_status
     }
     return render(request, 'core/employee_detail.html', context)
