@@ -429,9 +429,11 @@ def create_issue(request, employee_id):
 def issue_edit(request, employee_id):
     employee = get_object_or_404(Employee, pk=employee_id)
     issues = Issue.objects.filter(employee=employee).select_related('ppe_type')
+    all_employees = Employee.objects.all().order_by('last_name', 'first_name')
     return render(request, 'core/edit_issues.html', {
         'employee': employee,
         'issues': issues,
+        'all_employees': all_employees,
     })
 
 
@@ -497,6 +499,62 @@ def issue_delete(request, issue_id):
         messages.error(request, f"Ошибка удаления: {str(e)}")
     
     return redirect('core:edit_issues', employee_id=employee_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def issue_transfer(request, issue_id):
+    issue = get_object_or_404(Issue.objects.select_related('employee'), pk=issue_id)
+    old_employee_id = issue.employee.id
+    
+    try:
+        new_employee_id = request.POST.get('new_employee_id')
+        if not new_employee_id:
+            raise ValueError("Не выбран сотрудник для передачи")
+        
+        new_employee = get_object_or_404(Employee, pk=new_employee_id)
+        
+        # Проверяем, есть ли у нового сотрудника соответствующая норма
+        norm_exists = False
+        
+        # Проверка норм по должности
+        if new_employee.position:
+            norm_exists = Norm.objects.filter(
+                position=new_employee.position,
+                ppe_type=issue.ppe_type
+            ).exists()
+        
+        # Проверка норм по высотной группе
+        if not norm_exists and new_employee.height_group:
+            norm_exists = NormHeight.objects.filter(
+                height_group=new_employee.height_group,
+                ppe_type=issue.ppe_type
+            ).exists()
+        
+        if not norm_exists:
+            messages.error(request, f"У сотрудника {new_employee} нет соответствующей нормы для {issue.ppe_type.name}")
+            return redirect('core:edit_issues', employee_id=old_employee_id)
+        
+        # Создаем копию записи для нового сотрудника
+        Issue.objects.create(
+            employee=new_employee,
+            ppe_type=issue.ppe_type,
+            item_name=issue.item_name,
+            item_size=issue.item_size,
+            issue_date=issue.issue_date,
+            expiration_date=issue.expiration_date,
+            is_active=True
+        )
+        
+        # Удаляем исходную запись
+        issue.delete()
+        
+        messages.success(request, f"СИЗ успешно передан сотруднику {new_employee}")
+    except Exception as e:
+        logger.error(f"Error transferring issue: {e}")
+        messages.error(request, f"Ошибка передачи: {str(e)}")
+    
+    return redirect('core:edit_issues', employee_id=old_employee_id)
 
 
 @login_required
