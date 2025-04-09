@@ -25,6 +25,7 @@
   <div class="container-fluid py-3 wider-table">
     <article>
       <div class="card-body">
+        {% include 'includes/messages.html' %}
         <h2>Детали работника: {{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h2>
 
         <table class="table table-striped">

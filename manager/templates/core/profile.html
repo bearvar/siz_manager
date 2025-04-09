@@ -2,6 +2,7 @@
 
   <head> 
     <title>
+      {% include 'includes/messages.html' %}
       {% block title %} 
         {{author_obj.username}}
         {% if author_obj.get_full_name %}

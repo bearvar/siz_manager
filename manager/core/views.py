@@ -422,29 +422,27 @@ def issue_update(request, issue_id):
     employee_id = issue.employee.id
     
     try:
-        # Сохраняем исходные значения перед изменениями
         original_issue_date = issue.issue_date
         original_expiration_date = issue.expiration_date
         
-        # Обновляем поля
         issue.item_name = request.POST.get('item_name', '').strip()
         issue.item_size = request.POST.get('item_size', '').strip() or None
+        
+        # Парсинг даты в формате дд.мм.гггг
         issue.issue_date = datetime.strptime(
-            request.POST['issue_date'], 
-            '%Y-%m-%d'
+            request.POST['issue_date'].strip(),
+            '%d.%m.%Y'
         ).date()
         
-        # Обрабатываем дату списания
-        expiration_date_str = request.POST.get('expiration_date')
+        expiration_date_str = request.POST.get('expiration_date', '').strip()
         if expiration_date_str:
             issue.expiration_date = datetime.strptime(
-                expiration_date_str, 
-                '%Y-%m-%d'
+                expiration_date_str,
+                '%d.%m.%Y'
             ).date()
         else:
             issue.expiration_date = None
         
-        # Сохраняем только если дата списания была изменена вручную
         if issue.expiration_date != original_expiration_date:
             issue.save(update_fields=[
                 'item_name', 
@@ -453,10 +451,12 @@ def issue_update(request, issue_id):
                 'expiration_date'
             ])
         else:
-            # Принудительно вызываем save() для пересчета срока
             issue.save()
         
         messages.success(request, "Изменения успешно сохранены")
+    except ValueError as e:
+        logger.error(f"Date parsing error: {str(e)}")
+        messages.error(request, "Ошибка формата даты. Используйте формат дд.мм.гггг")
     except Exception as e:
         logger.error(f"Error updating issue {issue_id}: {str(e)}")
         messages.error(request, f"Ошибка сохранения: {str(e)}")
@@ -607,13 +607,13 @@ def expiring_ppe_issues(request, employee_id):
     today = date.today()
     quarters = []
     
-    # Генерируем 4 ближайших квартала
+    # Generate 4 upcoming quarters
     current_date = today
     for _ in range(4):
         year = current_date.year
         quarter = (current_date.month - 1) // 3 + 1
         
-        # Определяем даты начала и конца квартала
+        # Determine quarter start and end dates
         if quarter == 1:
             start_date = date(year, 1, 1)
             end_date = date(year, 3, 31)
@@ -634,12 +634,13 @@ def expiring_ppe_issues(request, employee_id):
             'end_date': end_date
         })
         
-        # Переходим к следующему кварталу
+        # Move to next quarter
         current_date = end_date + relativedelta(days=1)
     
-    # Собираем данные по каждому кварталу
+    # Collect quarterly data
     quarterly_issues = []
     for q in quarters:
+        # Fetch issues for the quarter
         issues = Issue.objects.filter(
             employee=employee,
             expiration_date__gte=q['start_date'],
@@ -647,10 +648,32 @@ def expiring_ppe_issues(request, employee_id):
             is_active=True
         ).select_related('ppe_type').order_by('expiration_date')
         
+        # Group duplicates
+        grouped = defaultdict(list)
+        for issue in issues:
+            key = (
+                issue.ppe_type_id,
+                issue.item_name,
+                issue.item_size,
+                issue.issue_date,
+                issue.expiration_date
+            )
+            grouped[key].append(issue)
+        
+        # Create issue groups with quantity
+        issue_groups = [
+            {'issue': group[0], 'quantity': len(group)}
+            for key, group in grouped.items()
+        ]
+        # Sort by expiration date
+        issue_groups = sorted(issue_groups, key=lambda x: x['issue'].expiration_date)
+        
         quarterly_issues.append({
             'quarter': q['quarter'],
             'year': q['year'],
-            'issues': issues,
+            'start_date': q['start_date'],
+            'end_date': q['end_date'],
+            'issue_groups': issue_groups,
             'count': issues.count()
         })
     

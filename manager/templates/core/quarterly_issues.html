@@ -9,6 +9,7 @@
     {% else %}
         {% for quarter in quarters %}
             <div class="card mt-4">
+                {% include 'includes/messages.html' %}
                 <div class="card-header">
                     <h4>{{ quarter.year }} год, {{ quarter.quarter }} квартал (расчет на {{ quarter.end_date|date:"d.m.Y" }})</h4>
                 </div>

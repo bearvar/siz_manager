@@ -6,6 +6,7 @@
 
 {% block content %}
 <div class="container py-5">
+  {% include 'includes/messages.html' %}
   <h1>Нормы для группы: {{ group }}</h1>
   <a href="{% url 'core:height_group_list' %}" class="btn btn-secondary mb-3">← Назад</a>
   

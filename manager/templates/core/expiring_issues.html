@@ -6,46 +6,50 @@
     
     {% for quarter in quarterly_issues %}
     <div class="card mt-4">
-        <div class="card-header">
-            <h4>
-                {{ quarter.year }} год, {{ quarter.quarter }} квартал 
-                <!-- ({{ quarter.quarter|add:"0"|stringformat:"d" }} квартал: 
-                {{ quarter.issues.0.start_date|date:"d.m.Y" }} - 
-                {{ quarter.issues.0.end_date|date:"d.m.Y" }}) -->
+        {% include 'includes/messages.html' %}
+        <div class="card-header bg-light">
+            <h4 class="mb-0">
+                {{ quarter.year }} год, {{ quarter.quarter }}-й квартал
+                <small class="text-muted">
+                    ({{ quarter.start_date|date:"d.m.Y" }} - {{ quarter.end_date|date:"d.m.Y" }})
+                </small>
             </h4>
-            <span>Всего истекает: {{ quarter.count }}</span>
+            <span class="badge badge-primary">Всего позиций: {{ quarter.count }}</span>
         </div>
-        <div class="card-body">
-            {% load user_filters %}
-            {% if quarter.issues %}
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Тип СИЗ</th>
-                        <th>Наименование</th>
-                        <th>Дата выдачи</th>
-                        <th>Дата списания</th>
-                        <!-- <th>Осталось времени</th> -->
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for issue in quarter.issues %}
-                    <tr>
-                        <td>{{ issue.ppe_type.name }}</td>
-                        <td>{{ issue.item_name }}</td>
-                        <td>{{ issue.issue_date|date:"d.m.Y" }}</td>
-                        <td>{{ issue.expiration_date|date:"d.m.Y" }}</td>
-                        <!--<td>
-                            {% with days_left=issue.expiration_date|timeuntil:today %}
-                                {{ days_left|split:" "|first }}
-                            {% endwith %}
-                        </td>-->
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="card-body p-0">
+            {% if quarter.issue_groups %}
+            <div class="list-group list-group-flush">
+                <div class="list-group-item">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th style="width: 32%" class="text-center">Тип СИЗ</th>
+                            <th style="width: 29%" class="text-center">Наименование</th>
+                            <th style="width: 10%" class="text-center">Размер</th>
+                            <th style="width: 5%" class="text-center">Количество</th>
+                            <th style="width: 12%" class="text-center">Дата выдачи</th>
+                            <th style="width: 12%" class="text-center">Списание до</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for group in quarter.issue_groups %}
+                        <tr>
+                            <td>{{ group.issue.ppe_type.name }}</td>
+                            <td>{{ group.issue.item_name }}</td>
+                            <td class="text-center">{{ group.issue.item_size }}</td>
+                            <td class="text-center">{{ group.quantity }}</td>
+                            <td class="text-center">{{ group.issue.issue_date|date:"d.m.Y" }}</td>
+                            <td class="{% if group.issue.expiration_date < today %}text-danger{% endif %} text-center">
+                                {{ group.issue.expiration_date|date:"d.m.Y" }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
             {% else %}
-            <div class="alert alert-info">Нет СИЗ с истекающим сроком в этом квартале</div>
+                <div class="alert alert-info m-3">Нет СИЗ с истекающим сроком в этом квартале</div>
             {% endif %}
         </div>
     </div>

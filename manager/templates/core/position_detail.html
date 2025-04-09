@@ -7,6 +7,7 @@
 {% block content %}
 <div class="container py-5">
   <div class="card">
+    {% include 'includes/messages.html' %}
     <div class="card-header d-flex justify-content-between align-items-center">
       <h2 class="mb-0">{{ position.position_name }}</h2>
       <a href="{% url 'core:norm_create' position_id=position.id %}" class="btn btn-primary">

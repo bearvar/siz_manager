@@ -132,10 +132,10 @@
                 {% endif %}
               </label>
               <div class="col-md-8">
-                {{ form.issue_date}}
+                {{ form.issue_date }}
                 {% if form.issue_date.help_text %}
                   <small id="{{ form.issue_date.id_for_label }}-help" class="form-text text-muted">
-                    {{ form.issue_date.help_text|safe }}
+                    {{ form.issue_date.help_text|safe }} (формат: дд.мм.гггг)
                   </small>
                 {% endif %}
               </div>

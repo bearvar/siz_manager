@@ -6,6 +6,7 @@
 
 {% block content %}
 <div class="container py-5">
+  {% include 'includes/messages.html' %}
   <h1>Редактирование сотрудника: {{ employee }}</h1>
   <a href="{% url 'core:employee_detail' employee_id=employee.id %}" class="btn btn-secondary mb-3">← Назад</a>
   

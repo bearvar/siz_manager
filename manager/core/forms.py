@@ -137,12 +137,25 @@ class IssueCreateForm(forms.ModelForm):
         help_text="Наименование СИЗ"
     )
 
+    issue_date = forms.DateField(
+        label="Дата выдачи",
+        input_formats=['%d.%m.%Y'],
+        widget=forms.DateInput(
+            format='%d.%m.%Y',
+            attrs={
+                'class': 'form-control',
+                'placeholder': 'дд.мм.гггг',
+                'type': 'text'  # Change from 'date' to text input
+            }
+        )
+    )
+
     class Meta:
         model = Issue
         fields = ['ppe_type', 'item_name', 'issue_date', 'item_size']
-        widgets = {
-            'issue_date': forms.DateInput(attrs={'type': 'date'}),
-        }
+        # widgets = {
+        #     'issue_date': forms.DateInput(attrs={'type': 'date'}),
+        # }
 
     def __init__(self, *args, **kwargs):
         self.employee = kwargs.pop('employee')
