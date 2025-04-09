@@ -2,10 +2,9 @@
 {% load static %}
 
 <style>
-  /* Добавьте это в секцию head или в ваш основной CSS файл */
   .fixed-select {
     width: 100% !important;
-    max-width: 400px; /* Регулируйте по необходимости */
+    max-width: 400px;
   }
   
   .fixed-select option {
@@ -16,6 +15,7 @@
     line-height: 1.4;
   }
 </style>
+
 
 
 {% block title %}Выдача СИЗ{% endblock %}
@@ -160,8 +160,8 @@
             </div>
 
             <!-- Кнопки -->
-            <div class="d-flex justify-content-center">
-              <button type="submit" class="btn btn-primary me-2">
+            <div class="d-flex justify-content-center" style="gap: 0.5rem;">
+              <button type="submit" class="btn btn-primary">
                 Сохранить
               </button>
               <a href="{% url 'core:employee_detail' employee.id %}" class="btn btn-secondary">

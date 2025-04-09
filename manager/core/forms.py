@@ -189,7 +189,7 @@ class IssueCreateForm(forms.ModelForm):
 class NormHeightCreateForm(forms.ModelForm):
     ppe_type_name = forms.CharField(
         label="Тип СИЗ",
-        help_text="Введите название существующего типа или создайте новый",
+        help_text="Введите название типа СИЗ",
         max_length=255
     )
     quantity = forms.IntegerField(
@@ -216,7 +216,7 @@ class NormHeightCreateForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.height_group = kwargs.pop('height_group', None)
         super().__init__(*args, **kwargs)
-        self.fields['ppe_type_name'].required = True  # Добавляем обязательность поля
+        self.fields['ppe_type_name'].required = True
 
     def clean_ppe_type_name(self):
         ppe_type_name = self.cleaned_data['ppe_type_name'].strip()
