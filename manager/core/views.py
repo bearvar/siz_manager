@@ -1,4 +1,5 @@
 import json
+import re
 import logging
 import openpyxl
 from collections import defaultdict
@@ -977,21 +978,45 @@ def employee_import_items(request, employee_id):
                                 else:
                                     issue_date = date.today()
 
+                            # Парсим размер из названия
+                            item_name = str(row['Наименование ОС'])
+                            item_size = "Не указан"
+                            
+                            # Шаблоны для поиска размеров
+                            size_patterns = [
+                                # Для формата "48-50/170-176"
+                                r'(\d{2}-\d{2}\s*/\s*\d{3}-\d{3})\b',
+                                # Для формата "р.10(XL)"
+                                r'\b(?:разм|р|размер)[.:]?\s*(\S+)',
+                                # Для других числовых форматов
+                                r'\b(\d{2,3}(?:-\d{2,3})?)\b'
+                            ]
+
+                            # Проверяем все шаблоны по порядку
+                            for pattern in size_patterns:
+                                match = re.search(pattern, item_name, re.IGNORECASE)
+                                if match:
+                                    item_size = match.group(1)
+                                    # Очищаем название от размера
+                                    item_name = re.sub(pattern, '', item_name, flags=re.IGNORECASE).strip()
+                                    break
+
                             # Создание нескольких выдач
                             for _ in range(quantity):
                                 Issue.objects.create(
                                     employee=employee,
                                     ppe_type=ppe_type,
-                                    item_name=row['Наименование ОС'],
+                                    item_name=item_name,
                                     item_mu=model_unit,
                                     issue_date=issue_date,
                                     expiration_date=expiration_date,
-                                    item_size=None
+                                    item_size=item_size
                                 )
                             
                             results['created'].append({
                                 'ppe_type': ppe_type.name,
-                                'item_name': row['Наименование ОС'],
+                                'item_name': item_name,
+                                'item_size': item_size,
                                 'quantity': quantity,
                                 'expiration_date': expiration_date
                             })
