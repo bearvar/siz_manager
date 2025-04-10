@@ -1,6 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import Employee, Position, Norm, Issue, PPEType, NormHeight, HeightGroup
+from .models import Employee, Position, Norm, Issue, PPEType, NormHeight, HeightGroup, FlushingAgentNorm, FlushingAgentType
 
 
 class EmployeeForm(forms.ModelForm):
@@ -113,6 +113,76 @@ class NormCreateForm(forms.ModelForm):
             raise ValueError("Не удалось определить тип СИЗ")
             
         instance.ppe_type = ppe_type
+        
+        if commit:
+            instance.save()
+        return instance
+
+class FlushingNormCreateForm(forms.ModelForm):
+    position = forms.ModelChoiceField(
+        queryset=Position.objects.all(),
+        label="Должность",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    agent_type_name = forms.CharField(
+        label="Тип смывочного средства",
+        help_text="Введите название типа средства. Пример: 'Мыло жидкое', 'Спрей от кровососущих насекомых'",
+        max_length=255)
+    monthly_ml = forms.IntegerField(
+        label="Норма в месяц (мл)",
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'min': 1,
+            'step': 1}))
+
+    class Meta:
+        model = FlushingAgentNorm
+        fields = ['monthly_ml']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['position'].empty_label = "Выберите должность"
+
+    def clean_agent_type_name(self):
+        agent_type_name = self.cleaned_data['agent_type_name'].strip()
+        if not agent_type_name:
+            raise ValidationError("Название типа средства обязательно")
+        return agent_type_name
+
+    def clean(self):
+        cleaned_data = super().clean()
+        position = cleaned_data.get('position')
+        agent_type_name = cleaned_data.get('agent_type_name')
+
+        if position and agent_type_name:
+            normalized_name = agent_type_name.strip().capitalize()
+            
+            try:
+                agent_type = FlushingAgentType.objects.get(name__iexact=normalized_name)
+                if FlushingAgentNorm.objects.filter(position=position, agent_type=agent_type).exists():
+                    self.add_error(
+                        'agent_type_name',
+                        f"Норма для '{agent_type.name}' уже существует для этой должности"
+                    )
+                else:
+                    cleaned_data['agent_type'] = agent_type
+            except FlushingAgentType.DoesNotExist:
+                cleaned_data['new_agent_type'] = normalized_name
+
+        return cleaned_data
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.position = self.cleaned_data['position']
+        
+        agent_type_name = self.cleaned_data.get('agent_type_name').strip().capitalize()
+        
+        if 'agent_type' in self.cleaned_data:
+            instance.agent_type = self.cleaned_data['agent_type']
+        else:
+            instance.agent_type = FlushingAgentType.objects.create(
+                name=agent_type_name)
         
         if commit:
             instance.save()

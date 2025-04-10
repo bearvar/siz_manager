@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Создание нормы смывочных средств для должности: {{ position.name }}</h2>
+    
+    <div class="card mt-3">
+        <div class="card-body">
+            {% load user_filters %}
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Должность:</label>
+                        {{ form.position }}
+                        {% if form.position.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.position.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="form-group mb-4">
+                        <label for="{{ form.agent_type_name.id_for_label }}">Тип средства</label>
+                        {{ form.agent_type_name|addclass:"form-control" }}
+                        <small class="form-text text-muted">
+                          Введите название типа средства. Пример: "Мыло жидкое", "Спрей от кровососущих насекомых"
+                        </small>
+                        {% if form.agent_type_name.errors %}
+                          <div class="alert alert-danger mt-2">
+                            {% for error in form.agent_type_name.errors %}
+                              {{ error }}
+                            {% endfor %}
+                          </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label">Норма в месяц (мл):</label>
+                        {{ form.monthly_ml }}
+                        {% if form.monthly_ml.errors %}
+                            <div class="invalid-feedback d-block">
+                                {{ form.monthly_ml.errors }}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Сохранить
+                    </button>
+                    <a href="{% url 'core:position_detail' position.id %}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Отмена
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

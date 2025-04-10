@@ -52,7 +52,7 @@
                     <!-- Колонка смывающих средств -->
                     <div class="col-6 pe-0">
                       <div class="d-grid gap-2">
-                        <a href="#"
+                        <a href="{% url 'core:create_flushing_norm' position_id=position.id %}"
                            class="btn btn-primary btn-sm w-100 mb-1"
                            title="Добавить норму смывающего средства">
                            Добавить норму смывающего средства
@@ -67,7 +67,6 @@
                   </div>
 
                   <!-- Форма удаления -->
-                  
                   <form method="post" 
                         action="{% url 'core:position_delete' position_id=position.id %}" 
                         class="d-inline">

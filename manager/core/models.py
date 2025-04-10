@@ -220,7 +220,7 @@ class PPEType(models.Model):
     default_mu = models.CharField(
         "Единица измерения",
         max_length=10,
-        choices=MEASUREMENT_UNITS,  # Используем константы из Issue
+        choices=MEASUREMENT_UNITS,
         default="шт."
     )
     
@@ -328,7 +328,6 @@ class Container(models.Model):
         except FlushingAgentNorm.DoesNotExist:
             pass
 
-
 class NormHeight(models.Model):
     height_group = models.ForeignKey(
         HeightGroup,
@@ -353,7 +352,6 @@ class NormHeight(models.Model):
 
     def __str__(self):
         return f"{self.height_group}: {self.ppe_type} x{self.quantity}"
-
 
 class Norm(models.Model):
     position = models.ForeignKey(

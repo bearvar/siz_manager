@@ -30,7 +30,7 @@
               <label for="{{ form.ppe_type_name.id_for_label }}">Тип СИЗ</label>
               {{ form.ppe_type_name|addclass:"form-control fixed-select" }}
               <small class="form-text text-muted">
-                Введите существующее название или создайте новое. Пример: "Перчатки", "Каска"
+                Введите название типа СИЗ. Пример: "Перчатки", "Каска"
               </small>
               {% if form.ppe_type_name.errors %}
                 <div class="alert alert-danger mt-2">

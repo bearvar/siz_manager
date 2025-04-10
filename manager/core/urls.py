@@ -9,6 +9,7 @@ urlpatterns = [
     path('employee/create/', views.employee_create, name='employee_create'),
     path('position/create/', views.position_create, name='position_create'),
     path('norm/create/<int:position_id>/', views.create_norm, name='norm_create'),
+    path('flushing-norm/create/<int:position_id>/', views.create_flushing_norm, name='create_flushing_norm'),
     path('positions/', views.position_list, name='position_list'),
     path('position/<int:position_id>/', views.position_detail, name='position_detail'),
     path('position/<int:position_id>/import-sap/', views.sap_import, name='sap_import'),
