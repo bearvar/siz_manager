@@ -575,6 +575,15 @@ def issue_edit(request, employee_id):
         'all_employees': all_employees,
     })
 
+@login_required
+def edit_flushing_issues(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    issues = FlushingAgentIssue.objects.filter(employee=employee).order_by('-issue_date')
+    return render(request, 'core/edit_flushing_issues.html', {
+        'employee': employee,
+        'issues': issues
+    })
+
 
 @login_required
 @require_http_methods(["POST"])
@@ -1172,6 +1181,53 @@ def delete_employee(request, employee_id):
 
 
 @login_required
+@require_http_methods(["POST"])
+def flushing_issue_update(request, issue_id):
+    issue = get_object_or_404(FlushingAgentIssue, pk=issue_id)
+    employee_id = issue.employee.id
+    try:
+        # Update fields from form data
+        issue.item_name = request.POST.get('item_name', '').strip()
+        issue.volume_ml = float(request.POST.get('volume_ml', 0))
+        issue.issue_date = datetime.strptime(
+            request.POST['issue_date'].strip(),
+            '%d.%m.%Y'
+        ).date()
+        
+        # Update container
+        container = Container.objects.get(
+            employee=issue.employee,
+            agent_type=issue.agent_type
+        )
+        container.total_ml += (issue.volume_ml - float(request.POST.get('original_volume', 0)))
+        container.save()
+        
+        issue.save()
+        messages.success(request, "Изменения смывающего средства сохранены")
+    except Exception as e:
+        messages.error(request, f"Ошибка обновления: {str(e)}")
+    return redirect('core:edit_flushing_issues', employee_id=employee_id)
+
+@login_required
+@require_http_methods(["POST"])
+def flushing_issue_delete(request, issue_id):
+    issue = get_object_or_404(FlushingAgentIssue, pk=issue_id)
+    employee_id = issue.employee.id
+    try:
+        # Update container
+        container = Container.objects.get(
+            employee=issue.employee,
+            agent_type=issue.agent_type
+        )
+        container.total_ml -= issue.volume_ml
+        container.save()
+        
+        issue.delete()
+        messages.success(request, "Смывающее средство удалено")
+    except Exception as e:
+        messages.error(request, f"Ошибка удаления: {str(e)}")
+    return redirect('core:edit_flushing_issues', employee_id=employee_id)
+
 def employee_import_items(request, employee_id):
     employee = get_object_or_404(Employee, pk=employee_id)
     results = {'created': [], 'errors': []}

@@ -15,6 +15,7 @@
         <a href="{% url 'core:employee_import_items' employee_id=employee.id %}" class="btn btn-secondary mb-1">Импорт из SAP</a>
         <a href="{% url 'core:edit_issues' employee_id=employee.id %}" class="btn btn-secondary mb-1">Редактировать СИЗ</a>
         <a href="{% url 'core:create_flushing_issue' employee_id=employee.id %}" class="btn btn-secondary mb-1">Выдать смывающее средство</a>
+        <a href="{% url 'core:edit_flushing_issues' employee_id=employee.id %}" class="btn btn-secondary mb-1">Редактировать смывающие средства</a>
         <a href="{% url 'core:edit_employee' employee_id=employee.id %}" class="btn btn-secondary mb-1">Редактировать сотрудника</a>
         <a href="{% url 'core:expiring_issues' employee_id=employee.id %}" class="btn btn-secondary mb-1">Сроки списания по кварталам</a>
         <table class="table table-striped">
