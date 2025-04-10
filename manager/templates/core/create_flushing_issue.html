@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Выдача смывающего средства{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-7 p-3">
+      <div class="card">
+        {% load user_filters %}
+        <h5>
+          <div class="card-header text-center">Выдача смывающего средства для {{ employee }}</div> <!-- Центрируем заголовок -->
+        </h5>
+
+        <div class="card-body">
+          {% if form.errors %}
+            {% for field in form %}
+              {% for error in field.errors %}
+                <div class="alert alert-danger">
+                  {{ error|escape }}
+                </div>
+              {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+              <div class="alert alert-danger">
+                {{ error|escape }}
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <form method="post">
+            {% csrf_token %}
+
+            <div class="form-group row my-3">
+              <label class="col-form-label col-md-4">
+                Сотрудник
+              </label>
+              <div class="col-md-8">
+                <input type="text" class="form-control" value="{{ employee }}" disabled>
+              </div>
+            </div>
+
+            <div class="form-group row my-3">
+              <label class="col-form-label col-md-4">
+                Тип средства
+              </label>
+              <div class="col-md-8">
+                {{ form.agent_type|addclass:"form-control fixed-select" }}
+                {% if form.agent_type.help_text %}
+                  <small class="form-text text-muted">
+                    {{ form.agent_type.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="form-group row my-3">
+              <label class="col-form-label col-md-4">
+                Объем (мл)
+              </label>
+              <div class="col-md-8">
+                {{ form.volume_ml|addclass:"form-control fixed-select" }}
+                {% if form.volume_ml.help_text %}
+                  <small class="form-text text-muted">
+                    {{ form.volume_ml.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="form-group row my-3">
+              <label class="col-form-label col-md-4">
+                Дата выдачи
+              </label>
+              <div class="col-md-8">
+                {{ form.issue_date }}
+              </div>
+            </div>
+
+            <!-- Количество -->
+            <div class="form-group row my-3">
+              <label for="{{ form.quantity.id_for_label }}" class="col-form-label col-md-4">
+                {{ form.quantity.label }}
+                {% if form.quantity.field.required %}
+                  <span class="required text-danger ms-1">*</span>
+                {% endif %}
+              </label>
+              <div class="col-md-8">
+                {{ form.quantity|addclass:"form-control fixed-select" }}
+                {% if form.quantity.help_text %}
+                  <small id="{{ form.quantity.id_for_label }}-help" class="form-text text-muted">
+                    {{ form.quantity.help_text|safe }}
+                  </small>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Кнопки -->
+            <div class="d-flex justify-content-center" style="gap: 0.5rem;">
+              <button type="submit" class="btn btn-primary">
+                Сохранить
+              </button>
+              <a href="{% url 'core:employee_detail' employee.id %}" class="btn btn-secondary">
+                Отмена
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

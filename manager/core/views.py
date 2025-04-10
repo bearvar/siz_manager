@@ -13,8 +13,8 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from .forms import EmployeeForm, IssueCreateForm, NormCreateForm, PositionForm, NormHeightCreateForm, SAPImportForm, EmployeeImportItemsForm, FlushingNormCreateForm
-from .models import Employee, Issue, Norm, PPEType, Position, NormHeight, HeightGroup, FlushingAgentNorm
+from .forms import EmployeeForm, IssueCreateForm, NormCreateForm, PositionForm, NormHeightCreateForm, SAPImportForm, EmployeeImportItemsForm, FlushingNormCreateForm, FlushingAgentIssueForm
+from .models import Employee, Issue, Norm, PPEType, Position, NormHeight, HeightGroup, FlushingAgentIssue, FlushingAgentType, FlushingAgentNorm, Container
 from users.models import CustomUser
 from xmlrpc.client import Boolean
 from django.views.decorators.http import require_http_methods
@@ -468,6 +468,65 @@ def flushing_norm_delete(request, norm_id):
 
 
 @login_required
+def create_flushing_issue(request, employee_id):
+    employee = get_object_or_404(Employee, id=employee_id)
+    
+    if not employee.position:
+        messages.error(request, "Сотрудник не имеет назначенной должности")
+        return redirect('core:employee_list')
+    
+    if request.method == 'POST':
+        form = FlushingAgentIssueForm(request.POST, employee=employee)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # Manually parse date from form data
+                    issue_date = form.cleaned_data['issue_date']
+                    if isinstance(issue_date, str):
+                        try:
+                            issue_date = datetime.strptime(
+                                issue_date, 
+                                '%d.%m.%Y'
+                            ).date()
+                        except ValueError:
+                            form.add_error('issue_date', 'Неверный формат даты. Используйте ДД.ММ.ГГГГ')
+                            raise forms.ValidationError('Invalid date format')
+                    
+                    # Create flushing agent issue with parsed date
+                    issue = FlushingAgentIssue(
+                        employee=employee,
+                        agent_type=form.cleaned_data['agent_type'],
+                        volume_ml=form.cleaned_data['volume_ml'],
+                        issue_date=issue_date,
+                        item_name=form.cleaned_data['agent_type'].name
+                    )
+                    issue.save()
+                    
+                    # Update container
+                    container, created = Container.objects.get_or_create(
+                        employee=employee,
+                        agent_type=issue.agent_type
+                    )
+                    container.total_ml += issue.volume_ml
+                    container.save()
+                    
+                    messages.success(request, 'Смывающее средство успешно выдано')
+                    return redirect('core:employee_detail', employee_id=employee.id)
+            except Exception as e:
+                messages.error(request, f'Ошибка сохранения: {str(e)}')
+        else:
+            messages.error(request, 'Исправьте ошибки в форме')
+    else:
+        form = FlushingAgentIssueForm(
+            employee=employee,
+            initial={'issue_date': timezone.now().date()}
+        )
+    
+    return render(request, 'core/create_flushing_issue.html', {
+        'employee': employee,
+        'form': form
+    })
+
 def create_issue(request, employee_id):
     employee = get_object_or_404(Employee, pk=employee_id)
     

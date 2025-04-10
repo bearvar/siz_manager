@@ -1,6 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from .models import Employee, Position, Norm, Issue, PPEType, NormHeight, HeightGroup, FlushingAgentNorm, FlushingAgentType
+from django.utils import timezone
+from .models import Employee, Position, Norm, Issue, PPEType, NormHeight, HeightGroup, FlushingAgentNorm, FlushingAgentType, FlushingAgentIssue
 
 
 class EmployeeForm(forms.ModelForm):
@@ -215,7 +216,7 @@ class IssueCreateForm(forms.ModelForm):
             attrs={
                 'class': 'form-control',
                 'placeholder': 'дд.мм.гггг',
-                'type': 'text'  # Change from 'date' to text input
+                'type': 'text'
             }
         )
     )
@@ -254,6 +255,53 @@ class IssueCreateForm(forms.ModelForm):
         self.fields['ppe_type'].widget.attrs.update({'class': 'form-select'})
         self.fields['ppe_type'].empty_label = "Выберите тип СИЗ"
         self.fields['ppe_type'].help_text = "Выберите из норм должности или высотных работ"
+
+
+class FlushingAgentIssueForm(forms.ModelForm):
+    agent_type = forms.ModelChoiceField(
+        label="Тип средства",
+        queryset=FlushingAgentType.objects.none()  # Default empty queryset
+    )
+    volume_ml = forms.IntegerField(
+        label="Объем (мл)",
+        min_value=1
+    )
+    issue_date = forms.DateField(
+        label="Дата выдачи",
+        input_formats=['%d.%m.%Y'],
+        widget=forms.DateInput(
+            format='%d.%m.%Y',
+            attrs={
+                'class': 'form-control',
+                'placeholder': 'дд.мм.гггг',
+                'type': 'text'
+            }
+        )
+    )
+
+    class Meta:
+        model = FlushingAgentIssue
+        fields = ['agent_type', 'volume_ml', 'issue_date']
+        widgets = {
+            'agent_type': forms.Select(attrs={'class': 'form-select'}),
+            'volume_ml': forms.NumberInput(attrs={'class': 'form-control'})
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.employee = kwargs.pop('employee', None)
+        super().__init__(*args, **kwargs)
+        
+        if self.employee and self.employee.position:
+            # Get agent types from norms for this position
+            norms = FlushingAgentNorm.objects.filter(position=self.employee.position)
+            self.fields['agent_type'].queryset = FlushingAgentType.objects.filter(
+                id__in=norms.values_list('agent_type', flat=True)
+            ).distinct().order_by('name')
+            self.fields['agent_type'].empty_label = "Выберите средство"
+            self.fields['agent_type'].label_from_instance = lambda obj: obj.name
+        else:
+            self.fields['agent_type'].queryset = FlushingAgentType.objects.none()
+            self.fields['agent_type'].empty_label = "Нет доступных средств"
 
 
 class NormHeightCreateForm(forms.ModelForm):

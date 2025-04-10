@@ -25,6 +25,7 @@ urlpatterns = [
     path('flushing-norm/update/<int:norm_id>/', views.flushing_norm_update, name='flushing_norm_update'),
     path('flushing-norm/delete/<int:norm_id>/', views.flushing_norm_delete, name='flushing_norm_delete'),
     path('employees/<int:employee_id>/issues/create/', views.create_issue, name='create_issue'),
+    path('employees/<int:employee_id>/flush/create/', views.create_flushing_issue, name='create_flushing_issue'),
     path('employees/<int:employee_id>/issues/edit/', views.issue_edit, name='edit_issues'),
     path('issue/update/<int:issue_id>/', views.issue_update, name='issue_update'),
     path('issue/delete/<int:issue_id>/', views.issue_delete, name='issue_delete'),

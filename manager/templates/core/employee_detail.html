@@ -11,7 +11,12 @@
       <div class="card-body">
         {% include 'includes/messages.html' %}
         <h2>Детали работника: {{ employee.last_name }} {{ employee.first_name }} {{ employee.patronymic }}</h2>
-
+        <a href="{% url 'core:create_issue' employee_id=employee.id %}" class="btn btn-secondary mb-1">Выдать СИЗ</a>
+        <a href="{% url 'core:employee_import_items' employee_id=employee.id %}" class="btn btn-secondary mb-1">Импорт из SAP</a>
+        <a href="{% url 'core:edit_issues' employee_id=employee.id %}" class="btn btn-secondary mb-1">Редактировать СИЗ</a>
+        <a href="{% url 'core:create_flushing_issue' employee_id=employee.id %}" class="btn btn-secondary mb-1">Выдать смывающее средство</a>
+        <a href="{% url 'core:edit_employee' employee_id=employee.id %}" class="btn btn-secondary mb-1">Редактировать сотрудника</a>
+        <a href="{% url 'core:expiring_issues' employee_id=employee.id %}" class="btn btn-secondary mb-1">Сроки списания по кварталам</a>
         <table class="table table-striped">
           <thead>
             <tr>
@@ -85,23 +90,17 @@
                     <td style="word-wrap: break-word; white-space: normal;">{{ group.issue.ppe_type.name }}</td>
                     <td>{{ group.issue.item_name }}</td>
                     <td class="text-center">{{ group.issue.item_size }}</td>
-                    <td class="text-center">{{ group.quantity }}</td>  <!-- Quantity -->
+                    <td class="text-center">{{ group.quantity }}</td>
                     <td class="text-center">{{ group.issue.issue_date|date:"d.m.Y"|default_if_none:"" }}</td>
                     <td class="text-center">{{ group.issue.expiration_date|date:"d.m.Y"|default_if_none:"" }}</td>
                 </tr>
             {% empty %}
                 <tr>
-                    <td colspan="6">Нет выданных предметов.</td>  <!-- Updated colspan -->
+                    <td colspan="6">Нет выданных предметов.</td>
                 </tr>
             {% endfor %}
         </tbody>
         </table>
-
-        <a href="{% url 'core:create_issue' employee_id=employee.id %}" class="btn btn-secondary">Выдать новое СИЗ</a>
-        <a href="{% url 'core:employee_import_items' employee_id=employee.id %}" class="btn btn-secondary">Импорт из SAP</a>
-        <a href="{% url 'core:edit_issues' employee_id=employee.id %}" class="btn btn-secondary">Редактировать СИЗ</a>
-        <a href="{% url 'core:edit_employee' employee_id=employee.id %}" class="btn btn-secondary">Редактировать сотрудника</a>
-        <a href="{% url 'core:expiring_issues' employee_id=employee.id %}" class="btn btn-secondary">Сроки списания по кварталам</a>
       </div>
     </article>
   </div>
