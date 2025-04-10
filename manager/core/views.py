@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from .forms import EmployeeForm, IssueCreateForm, NormCreateForm, PositionForm, NormHeightCreateForm, SAPImportForm, EmployeeImportItemsForm, FlushingNormCreateForm
-from .models import Employee, Issue, Norm, PPEType, Position, NormHeight, HeightGroup
+from .models import Employee, Issue, Norm, PPEType, Position, NormHeight, HeightGroup, FlushingAgentNorm
 from users.models import CustomUser
 from xmlrpc.client import Boolean
 from django.views.decorators.http import require_http_methods
@@ -209,7 +209,7 @@ def create_norm(request, position_id):
 
 @login_required
 def create_flushing_norm(request, position_id):
-    """Создание нормы для смывочных средств"""
+    """Создание нормы для смывающих средств"""
     position = get_object_or_404(Position, pk=position_id)
     
     if request.method == 'POST':
@@ -218,7 +218,7 @@ def create_flushing_norm(request, position_id):
             norm = form.save(commit=False)
             norm.position = position
             norm.save()
-            messages.success(request, 'Норма для смывочных средств успешно создана')
+            messages.success(request, 'Норма для смывающих средств успешно создана')
             return redirect('core:position_detail', position_id=position.id)
     else:
         form = FlushingNormCreateForm()
@@ -233,7 +233,12 @@ def create_flushing_norm(request, position_id):
 def position_detail(request, position_id):
     position = get_object_or_404(Position, pk=position_id)
     norms = Norm.objects.filter(position=position)
-    return render(request, 'core/position_detail.html', {'position': position, 'norms': norms})
+    flushing_norms = FlushingAgentNorm.objects.filter(position=position)
+    return render(request, 'core/position_detail.html', {
+        'position': position,
+        'norms': norms,
+        'flushing_norms': flushing_norms
+    })
 
 
 @login_required

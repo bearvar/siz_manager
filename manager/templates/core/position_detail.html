@@ -25,28 +25,53 @@
     
     <div class="card-body">
       <div class="card">
-      <table class="table table-striped">
-        <thead>
-          <tr>
-            <th class="text-center">Тип СИЗ</th>
-            <th class="text-center">Количество</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for norm in position.norms.all %}
+        <div class="text-center" style="margin-top: 5px;"><h5><b>Нормы средств индивидуальной защиты</b></h5></div>
+        <table class="table table-striped">
+          <thead>
             <tr>
-              <td>{{ norm.ppe_type.name }}</td>
-              <td class="text-center">{{ norm.quantity }}</td>
+              <th class="text-center">Тип СИЗ</th>
+              <th class="text-center">Количество</th>
             </tr>
-          {% empty %}
+          </thead>
+          <tbody>
+            {% for norm in position.norms.all %}
+              <tr>
+                <td>{{ norm.ppe_type.name }}</td>
+                <td class="text-center">{{ norm.quantity }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="2" class="text-center">Нормы выдачи не установлены</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card mt-4">
+        <div class="text-center" style="margin-top: 5px;"><h5><b>Нормы моющих средств</b></h5></div>
+        <table class="table table-striped">
+          <thead>
             <tr>
-              <td colspan="2" class="text-center">Нормы выдачи не установлены</td>
+              <th class="text-center">Тип средства</th>
+              <th class="text-center">Норма расхода (мл/мес)</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for norm in flushing_norms %}
+              <tr>
+                <td>{{ norm.agent_type.name }}</td>
+                <td class="text-center">{{ norm.monthly_ml }} мл</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="2" class="text-center">Нормы моющих средств не установлены</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
   </div>
 </div>
 {% endblock %}
