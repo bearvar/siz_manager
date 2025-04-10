@@ -412,6 +412,60 @@ def norm_delete(request, norm_id):
     
     return redirect('core:norm_edit', position_id=position_id)
 
+@login_required
+def flushing_norm_edit(request, position_id):
+    position = get_object_or_404(
+        Position.objects.prefetch_related('flushingnorms__agent_type'), 
+        pk=position_id
+    )
+    return render(request, 'core/flushing_norm_edit.html', {
+        'position': position,
+        'norms': position.flushingnorms.all()
+    })
+
+@login_required
+@require_http_methods(["POST"])
+def flushing_norm_update(request, norm_id):
+    try:
+        norm = FlushingAgentNorm.objects.select_related('position').get(pk=norm_id)
+        monthly_ml = int(request.POST.get('monthly_ml', 0))
+        
+        if monthly_ml < 1:
+            raise ValueError("Месячная норма должна быть положительным числом")
+            
+        norm.monthly_ml = monthly_ml
+        norm.save()
+        
+        messages.success(request, f"Норма для {norm.agent_type.name} обновлена")
+        return redirect('core:flushing_norm_edit', position_id=norm.position.id)
+        
+    except FlushingAgentNorm.DoesNotExist:
+        messages.error(request, "Норма не найдена")
+    except ValueError as e:
+        messages.error(request, str(e))
+    except Exception as e:
+        messages.error(request, f"Ошибка при обновлении: {str(e)}")
+        logger.error(f"Flushing norm update error: {str(e)}")
+    
+    return redirect('core:flushing_norm_edit', position_id=norm.position.id)
+
+@login_required
+@require_http_methods(["POST"])
+def flushing_norm_delete(request, norm_id):
+    try:
+        norm = FlushingAgentNorm.objects.select_related('position').get(pk=norm_id)
+        position_id = norm.position.id
+        agent_name = norm.agent_type.name
+        norm.delete()
+        messages.success(request, f"Норма для {agent_name} удалена")
+    except FlushingAgentNorm.DoesNotExist:
+        messages.error(request, "Норма не найдена")
+    except Exception as e:
+        messages.error(request, f"Ошибка при удалении: {str(e)}")
+        logger.error(f"Flushing norm delete error: {str(e)}")
+    
+    return redirect('core:flushing_norm_edit', position_id=position_id)
+
 
 @login_required
 def create_issue(request, employee_id):
@@ -839,18 +893,14 @@ def norm_height_edit(request, group_id):
 def norm_height_update(request, norm_id):
     try:
         norm = NormHeight.objects.select_related('height_group').get(pk=norm_id)
-        quantity = int(request.POST.get('quantity', 0))
-        lifespan = int(request.POST.get('lifespan', 0))
+        monthly_ml = int(request.POST.get('monthly_ml', 0))
         
         # Валидация данных
-        if quantity < 1:
-            raise ValueError("Количество должно быть положительным числом")
-        if lifespan < 1:
-            raise ValueError("Срок годности должен быть положительным числом")
+        if monthly_ml < 1:
+            raise ValueError("Норма расхода должна быть положительным числом")
             
         # Обновление данных
-        norm.quantity = quantity
-        norm.lifespan = lifespan
+        norm.monthly_ml = monthly_ml
         norm.save()
         
         messages.success(request, f"Норма для {norm.ppe_type.name} обновлена")

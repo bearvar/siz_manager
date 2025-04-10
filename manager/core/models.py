@@ -255,9 +255,10 @@ class FlushingAgentType(models.Model):
 class FlushingAgentNorm(models.Model):
     """Нормы расхода моющих средств по должностям"""
     position = models.ForeignKey(
-        Position,
+        Position, 
         on_delete=models.CASCADE,
-        verbose_name="Должность"
+        verbose_name="Должность",
+        related_name="flushingnorms"
     )
     agent_type = models.ForeignKey(
         FlushingAgentType,

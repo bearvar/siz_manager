@@ -52,15 +52,15 @@
                     <!-- Колонка смывающих средств -->
                     <div class="col-6 pe-0">
                       <div class="d-grid gap-2">
-                        <a href="{% url 'core:create_flushing_norm' position_id=position.id %}"
+                        <a href="{% url 'core:flushing_norm_create' position_id=position.id %}"
                            class="btn btn-primary btn-sm w-100 mb-1"
                            title="Добавить норму смывающего средства">
                            Добавить норму смывающего средства
                         </a>
-                        <a href="#"
+                        <a href="{% url 'core:flushing_norm_edit' position.id %}" 
                            class="btn btn-primary btn-sm w-100"
                            title="Изменить нормы смывающего средства">
-                           Изменить нормы смывающего средства
+                           Изменить нормы смывающих средств
                         </a>
                       </div>
                     </div>

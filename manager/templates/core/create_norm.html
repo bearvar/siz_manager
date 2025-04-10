@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Добавить норму выдачи{% endblock %}
+{% block title %}Добавить норму СИЗ{% endblock %}
 {% load static %}
 
 {% block content %}
@@ -9,7 +9,7 @@
       <div class="card">
         {% load user_filters %}
         {% include 'includes/messages.html' %}
-        <div class="card-header">Добавить норму выдачи</div>
+        <div class="card-header text-center"><h5>Добавить норму СИЗ</h5></div>
         <div class="card-body">
           {% if form.errors %}
             {% for field in form %} 
