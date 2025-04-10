@@ -33,35 +33,61 @@
               </td>
               <td class="text-center">
                 <div class="action-buttons">
-                  <!-- Основные кнопки -->
-                  <a href="{% url 'core:norm_create' position_id=position.id %}" 
-                     class="btn btn-primary btn-sm">
-                    Добавить норму
-                  </a>
-                  <a href="{% url 'core:norm_edit' position_id=position.id %}" 
-                     class="btn btn-primary btn-sm">
-                    Изменить нормы
-                  </a>
+                  <!-- Группы кнопок в две колонки -->
+                  <div class="row g-2 mb-2 mx-0">  <!-- Добавлен mx-0 для удаления горизонтальных отступов -->
+                    <!-- Колонка СИЗ -->
+                    <div class="col-6 ps-0">  <!-- Убраны левые отступы -->
+                      <div class="d-grid gap-2">
+                        <a href="{% url 'core:norm_create' position_id=position.id %}" 
+                           class="btn btn-primary btn-sm w-100 mb-1">  <!-- Добавлен w-100 -->
+                          Добавить норму СИЗ
+                        </a>
+                        <a href="{% url 'core:norm_edit' position_id=position.id %}" 
+                           class="btn btn-primary btn-sm w-100">
+                          Изменить нормы СИЗ
+                        </a>
+                      </div>
+                    </div>
+                    
+                    <!-- Колонка смывающих средств -->
+                    <div class="col-6 pe-0">
+                      <div class="d-grid gap-2">
+                        <a href="#"
+                           class="btn btn-primary btn-sm w-100 mb-1"
+                           title="Добавить норму смывающего средства">
+                           Добавить норму смывающего средства
+                        </a>
+                        <a href="#"
+                           class="btn btn-primary btn-sm w-100"
+                           title="Изменить нормы смывающего средства">
+                           Изменить нормы смывающего средства
+                        </a>
+                      </div>
+                    </div>
+                  </div>
 
                   <!-- Форма удаления -->
+                  
                   <form method="post" 
                         action="{% url 'core:position_delete' position_id=position.id %}" 
                         class="d-inline">
-                    {% csrf_token %}
-                    {% if position.employees.exists %}
-                      <button type="button" 
-                              class="btn btn-danger btn-sm" 
-                              disabled
-                              title="Есть сотрудники с этой должностью">
-                        Удалить
-                      </button>
-                    {% else %}
-                      <button type="submit" 
-                              class="btn btn-danger btn-sm"
-                              onclick="return confirm('Вы уверены?')">
-                        Удалить
-                      </button>
-                    {% endif %}
+                    <div class="col-12 pe-0">
+                      {% csrf_token %}
+                      {% if position.employees.exists %}
+                        <button type="button" 
+                                class="btn btn-danger btn-sm w-100" 
+                                disabled
+                                title="Есть сотрудники с этой должностью">
+                          Удалить
+                        </button>
+                      {% else %}
+                        <button type="submit" 
+                                class="btn btn-danger btn-sm w-100"
+                                onclick="return confirm('Вы уверены?')">
+                          Удалить
+                        </button>
+                      {% endif %}
+                    </div>
                   </form>
                 </div>
                 {% if position.employees.exists %}

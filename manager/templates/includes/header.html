@@ -24,6 +24,9 @@
           <div class="navbar-actions-container m-1-8 m-r-8" id="navbarNavDropdown">
             <ul class="navbar-nav ms-auto profile-container ai-center">
               <li class="nav-item">
+                <a class="nav-link" href="{% url 'admin:core_flushingagentnorm_changelist' %}">Нормы моющих средств</a>
+              </li>
+              <li class="nav-item">
                 <a class="nav-link white-text {% if view_name  == 'core:employee_list' %}active{% endif %}" href="{% url 'core:employee_list' %}">Список работников</a>
               </li>
               <li class="nav-item">

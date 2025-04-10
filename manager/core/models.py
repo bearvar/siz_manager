@@ -1,8 +1,10 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from dateutil.relativedelta import relativedelta
-from django.db.models.signals import post_migrate
+from django.db.models.signals import post_migrate, post_save
 from django.dispatch import receiver
+from django.utils import timezone
+from django.core.validators import MinValueValidator
 
 MEASUREMENT_UNITS = (
     ("шт.", "штук"),
@@ -25,29 +27,6 @@ class Position(models.Model):
     
     def __str__(self):
         return self.position_name
-
-
-class PPEType(models.Model):
-    name = models.CharField(
-        "Тип СИЗ",
-        max_length=255,
-        unique=True,
-        help_text="Укажите тип средства индивидуальной защиты"
-    )
-    default_mu = models.CharField(
-        "Единица измерения",
-        max_length=10,
-        choices=MEASUREMENT_UNITS,  # Используем константы из Issue
-        default="шт."
-    )
-    
-    class Meta:
-        verbose_name = "Тип СИЗ"
-        verbose_name_plural = "Типы СИЗ"
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
 
 
 class HeightGroup(models.Model):
@@ -78,34 +57,8 @@ class HeightGroup(models.Model):
         super().save(*args, **kwargs)
 
 
-class NormHeight(models.Model):
-    height_group = models.ForeignKey(
-        HeightGroup,
-        on_delete=models.CASCADE,
-        related_name='norms'
-    )
-    ppe_type = models.ForeignKey(
-        PPEType,
-        on_delete=models.CASCADE,
-        related_name='height_norms'
-    )
-    quantity = models.PositiveIntegerField("Количество")
-    lifespan = models.PositiveIntegerField(
-        "Срок годности (месяцев)",
-        default=6  # По умолчанию меньше чем для обычных норм
-    )
-
-    class Meta:
-        unique_together = ['height_group', 'ppe_type']
-        verbose_name = "Норма для высотных работ"
-        verbose_name_plural = "Нормы для высотных работ"
-
-    def __str__(self):
-        return f"{self.height_group}: {self.ppe_type} x{self.quantity}"
-
-
 class Employee(models.Model):
-    # Существующие поля
+    """Модель сотрудника"""
     first_name = models.CharField("Имя", max_length=50)
     last_name = models.CharField("Фамилия", max_length=50)
     patronymic = models.CharField("Отчество", max_length=50)
@@ -257,6 +210,151 @@ class Employee(models.Model):
         return f"{self.last_name} {self.first_name} {self.patronymic}".strip()
 
 
+class PPEType(models.Model):
+    name = models.CharField(
+        "Тип СИЗ",
+        max_length=255,
+        unique=True,
+        help_text="Укажите тип средства индивидуальной защиты"
+    )
+    default_mu = models.CharField(
+        "Единица измерения",
+        max_length=10,
+        choices=MEASUREMENT_UNITS,  # Используем константы из Issue
+        default="шт."
+    )
+    
+    class Meta:
+        verbose_name = "Тип СИЗ"
+        verbose_name_plural = "Типы СИЗ"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+class FlushingAgentType(models.Model):
+    """Типы моющих средств"""
+    name = models.CharField(
+        "Название средства",
+        max_length=255,
+        unique=True
+    )
+    description = models.TextField(
+        "Описание",
+        blank=True
+    )
+    
+    class Meta:
+        verbose_name = "Тип моющего средства"
+        verbose_name_plural = "Типы моющих средств"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+class FlushingAgentNorm(models.Model):
+    """Нормы расхода моющих средств по должностям"""
+    position = models.ForeignKey(
+        Position,
+        on_delete=models.CASCADE,
+        verbose_name="Должность"
+    )
+    agent_type = models.ForeignKey(
+        FlushingAgentType,
+        on_delete=models.CASCADE,
+        verbose_name="Тип средства"
+    )
+    monthly_ml = models.PositiveIntegerField(
+        "Норма расхода (мл/мес)",
+        validators=[MinValueValidator(1)]
+    )
+    
+    class Meta:
+        unique_together = ['position', 'agent_type']
+        verbose_name = "Норма моющих средств"
+        verbose_name_plural = "Нормы моющих средств"
+        ordering = ['position']
+
+    def __str__(self):
+        return f"{self.position}: {self.agent_type} - {self.monthly_ml}мл/мес"
+
+class Container(models.Model):
+    """Виртуальный контейнер для учета моющих средств"""
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        verbose_name="Сотрудник"
+    )
+    agent_type = models.ForeignKey(
+        FlushingAgentType,
+        on_delete=models.CASCADE,
+        verbose_name="Тип средства"
+    )
+    total_ml = models.PositiveIntegerField(
+        "Общий объем (мл)",
+        default=0
+    )
+    last_deduction = models.DateField(
+        "Последнее списание",
+        null=True,
+        blank=True
+    )
+    
+    class Meta:
+        unique_together = ['employee', 'agent_type']
+        indexes = [
+            models.Index(fields=['employee', 'agent_type']),
+        ]
+        verbose_name = "Контейнер"
+        verbose_name_plural = "Контейнеры"
+
+    def __str__(self):
+        return f"{self.employee} - {self.agent_type} ({self.total_ml}мл)"
+
+    def deduct_monthly(self):
+        """Выполняет ежемесячное списание"""
+        today = timezone.now().date()
+        if self.last_deduction and self.last_deduction.month == today.month:
+            return
+        
+        try:
+            norm = FlushingAgentNorm.objects.get(
+                position=self.employee.position,
+                agent_type=self.agent_type
+            )
+            self.total_ml = max(0, self.total_ml - norm.monthly_ml)
+            self.last_deduction = today
+            self.save()
+        except FlushingAgentNorm.DoesNotExist:
+            pass
+
+
+class NormHeight(models.Model):
+    height_group = models.ForeignKey(
+        HeightGroup,
+        on_delete=models.CASCADE,
+        related_name='norms'
+    )
+    ppe_type = models.ForeignKey(
+        PPEType,
+        on_delete=models.CASCADE,
+        related_name='height_norms'
+    )
+    quantity = models.PositiveIntegerField("Количество")
+    lifespan = models.PositiveIntegerField(
+        "Срок годности (месяцев)",
+        default=6  # По умолчанию меньше чем для обычных норм
+    )
+
+    class Meta:
+        unique_together = ['height_group', 'ppe_type']
+        verbose_name = "Норма для высотных работ"
+        verbose_name_plural = "Нормы для высотных работ"
+
+    def __str__(self):
+        return f"{self.height_group}: {self.ppe_type} x{self.quantity}"
+
+
 class Norm(models.Model):
     position = models.ForeignKey(
         Position,
@@ -292,6 +390,55 @@ class Norm(models.Model):
             is_active=True
         )
 
+
+class FlushingAgentIssue(models.Model):
+    """Выдача моющих средств сотруднику"""
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        verbose_name="Сотрудник"
+    )
+    agent_type = models.ForeignKey(
+        FlushingAgentType,
+        on_delete=models.CASCADE,
+        verbose_name="Тип средства"
+    )
+    item_name = models.CharField(
+        "Наименование",
+        max_length=255
+    )
+    volume_ml = models.PositiveIntegerField(
+        "Объем (мл)",
+        validators=[MinValueValidator(1)]
+    )
+    issue_date = models.DateField(
+        "Дата выдачи",
+        default=timezone.now
+    )
+    item_mu = models.CharField(
+        "Единица измерения",
+        max_length=10,
+        choices=MEASUREMENT_UNITS,
+        default="мл."
+    )
+    
+    class Meta:
+        verbose_name = "Выдача моющего средства"
+        verbose_name_plural = "Выдачи моющих средств"
+        ordering = ['-issue_date']
+
+    def __str__(self):
+        return f"{self.employee} - {self.item_name} ({self.volume_ml}мл)"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # Обновляем контейнер при создании новой выдачи
+        container, created = Container.objects.get_or_create(
+            employee=self.employee,
+            agent_type=self.agent_type
+        )
+        container.total_ml += self.volume_ml
+        container.save()
 
 class Issue(models.Model):
     employee = models.ForeignKey(
