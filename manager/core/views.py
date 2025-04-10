@@ -169,7 +169,7 @@ def position_create(request):
         form = PositionForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('core:index')  # Redirect to the index page after successful creation
+            return redirect('core:position_list')
     else:
         form = PositionForm()
     return render(request, 'core/create_position.html', {'form': form})

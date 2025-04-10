@@ -57,11 +57,11 @@
                      placeholder="дд.мм.гггг">
           </td>
           <td class="d-flex gap-2">
-              <button type="submit" class="btn btn-sm btn-primary" style="height: 31px; min-width: 85px;">Сохранить</button>
+              <button type="submit" class="btn btn-sm btn-primary mr-1" style="height: 31px; min-width: 85px;">Сохранить</button>
             </form>
             <form method="post" action="{% url 'core:issue_delete' issue_id=issue.id %}">
               {% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-danger" style="height: 31px; min-width: 85px;">Удалить</button>
+              <button type="submit" class="btn btn-sm btn-danger mr-1" style="height: 31px; min-width: 85px;">Удалить</button>
             </form>
             <button type="button" class="btn btn-sm btn-primary transfer-btn ms-2" data-issue-id="{{ issue.id }}" style="height: 31px; min-width: 85px;">Передать</button>
             <form method="post" action="{% url 'core:issue_transfer' issue_id=issue.id %}" class="transfer-form d-none" id="transfer-form-{{ issue.id }}">
