@@ -262,9 +262,22 @@ class FlushingAgentIssueForm(forms.ModelForm):
         label="Тип средства",
         queryset=FlushingAgentType.objects.none()  # Default empty queryset
     )
+    item_name = forms.CharField(
+        label="Название средства",
+        max_length=255,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Например: Мыло жидкое "Clean", Спрей Mosquitall'
+        })
+    )
     volume_ml = forms.IntegerField(
         label="Объем (мл)",
-        min_value=1
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'min': 1,
+            'step': 1
+        })
     )
     issue_date = forms.DateField(
         label="Дата выдачи",
@@ -281,7 +294,11 @@ class FlushingAgentIssueForm(forms.ModelForm):
 
     class Meta:
         model = FlushingAgentIssue
-        fields = ['agent_type', 'volume_ml', 'issue_date']
+        fields = ['agent_type', 'item_name', 'volume_ml', 'issue_date']
+        labels = {
+            'item_name': 'Конкретное название средства',
+            'volume_ml': 'Объем выдачи (мл)'
+        }
         widgets = {
             'agent_type': forms.Select(attrs={'class': 'form-select'}),
             'volume_ml': forms.NumberInput(attrs={'class': 'form-control'})

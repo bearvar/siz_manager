@@ -346,11 +346,16 @@ def employee_detail(request, employee_id):
     # Сортируем по статусу и названию СИЗ
     norms_status.sort(key=lambda x: (x['status'] == "✅ В норме", x['ppe_type']))
     
+    # Add flushing agent data
+    flushing_issues = FlushingAgentIssue.objects.filter(employee=employee)
+    containers = Container.objects.filter(employee=employee)
+    
     context = {
         'employee': employee,
         'issue_groups': issue_groups,
-        # 'issues': all_issues,
-        'norms_status': norms_status
+        'norms_status': norms_status,
+        'flushing_issues': flushing_issues,
+        'containers': containers
     }
     return render(request, 'core/employee_detail.html', context)
 
@@ -498,7 +503,7 @@ def create_flushing_issue(request, employee_id):
                         agent_type=form.cleaned_data['agent_type'],
                         volume_ml=form.cleaned_data['volume_ml'],
                         issue_date=issue_date,
-                        item_name=form.cleaned_data['agent_type'].name
+                        item_name=form.cleaned_data['item_name']
                     )
                     issue.save()
                     

@@ -102,6 +102,33 @@
             {% endfor %}
         </tbody>
         </table>
+
+        <h4>Выданные смывающие средства:</h4>
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th class="text-center">Тип</th>
+              <th class="text-center">Наименование</th>
+              <th class="text-center">Объем</th>
+              <th class="text-center">В наличии</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for issue in flushing_issues %}
+              <tr>
+                <td>{{ issue.agent_type.name }}</td>
+                <td>{{ issue.item_name }}</td>
+                <td class="text-center">{{ issue.volume_ml }} мл</td>
+                <td class="text-center">{{ issue.volume_ml }} мл</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4">Нет выданных смывающих средств</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
       </div>
     </article>
   </div>

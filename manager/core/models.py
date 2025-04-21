@@ -403,8 +403,9 @@ class FlushingAgentIssue(models.Model):
         verbose_name="Тип средства"
     )
     item_name = models.CharField(
-        "Наименование",
-        max_length=255
+        "Наименование средства",
+        max_length=255,
+        help_text="Введите конкретное название средства (например: 'Мыло жидкое Лошадиная сила')"
     )
     volume_ml = models.PositiveIntegerField(
         "Объем (мл)",
