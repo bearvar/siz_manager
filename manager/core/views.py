@@ -584,9 +584,11 @@ def issue_edit(request, employee_id):
 def edit_flushing_issues(request, employee_id):
     employee = get_object_or_404(Employee, pk=employee_id)
     issues = FlushingAgentIssue.objects.filter(employee=employee).order_by('-issue_date')
+    all_employees = Employee.objects.exclude(id=employee.id).order_by('last_name', 'first_name')
     return render(request, 'core/edit_flushing_issues.html', {
         'employee': employee,
-        'issues': issues
+        'flushing_issues': issues,
+        'all_employees': all_employees
     })
 
 
@@ -708,6 +710,207 @@ def issue_transfer(request, issue_id):
         messages.error(request, f"Ошибка передачи: {str(e)}")
     
     return redirect('core:edit_issues', employee_id=old_employee_id)
+
+
+@login_required
+@require_http_methods(["POST"])
+def flushing_issue_transfer(request, issue_id):
+    issue = get_object_or_404(FlushingAgentIssue.objects.select_related('employee'), pk=issue_id)
+    old_employee_id = issue.employee.id
+    logger.info(f"issue object: {issue}")
+    
+    try:
+        new_employee_id = request.POST.get('new_employee_id')
+        if not new_employee_id:
+            raise ValueError("Не выбран сотрудник для передачи")
+        
+        new_employee = get_object_or_404(Employee, pk=new_employee_id)
+        
+        # Проверяем, есть ли у нового сотрудника соответствующая норма
+        norm_exists = False
+        
+        # Проверка норм по должности
+        if new_employee.position:
+            norm_exists = FlushingAgentNorm.objects.filter(
+                position=new_employee.position,
+                agent_type=issue.agent_type
+            ).exists()
+        
+        if not norm_exists:
+            messages.error(request, f"У сотрудника {new_employee} нет соответствующей нормы для {issue.agent_type.name}")
+            return redirect('core:edit_issues', employee_id=old_employee_id)
+        
+        # Создаем копию записи для нового сотрудника
+        FlushingAgentIssue.objects.create(
+            employee=new_employee,
+            agent_type=issue.agent_type,
+            item_name=issue.item_name,
+            volume_ml=issue.volume_ml,
+            issue_date=issue.issue_date,
+            is_active=True
+        )
+        
+        # Удаляем исходную запись
+        issue.delete()
+        
+        messages.success(request, f"Смывающее средство успешно передан сотруднику {new_employee}")
+    except Exception as e:
+        logger.error(f"Error transferring issue: {e}")
+        messages.error(request, f"Ошибка передачи: {str(e)}")
+    
+    return redirect('core:edit_issues', employee_id=old_employee_id)
+
+
+def employee_import_items(request, employee_id):
+    employee = get_object_or_404(Employee, pk=employee_id)
+    results = {'created': [], 'errors': []}
+    issues_to_create = []  # List to collect valid Issue objects
+
+    if request.method == 'POST':
+        form = EmployeeImportItemsForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                file = request.FILES['sap_file']
+                df = pd.read_excel(BytesIO(file.read()))
+
+                required_columns = [
+                    'Наименование группы СИЗ',
+                    'Наименование ОС',
+                    'Базисная ЕИ',
+                    'Прог.ДатаСписан',
+                    'Срок использования',
+                    'Получено.Количество'
+                ]
+                
+                if not set(required_columns).issubset(df.columns):
+                    missing = set(required_columns) - set(df.columns)
+                    raise ValueError(f"Отсутствуют колонки: {', '.join(missing)}")
+
+                # Process each row and collect valid issues
+                for index, row in df.iterrows():
+                    try:
+                        quantity = int(row['Получено.Количество'])
+                        if quantity <= 0:
+                            continue
+
+                        ppe_name = str(row['Наименование группы СИЗ']).strip()
+                        if not ppe_name:
+                            raise ValueError("Пустое название типа СИЗ")
+                        
+                        ppe_type = PPEType.objects.get(name__iexact=ppe_name)
+                        
+                        norm_exists = False
+                        if employee.position:
+                            norm_exists = Norm.objects.filter(
+                                position=employee.position,
+                                ppe_type=ppe_type
+                            ).exists()
+                        
+                        if not norm_exists and employee.height_group:
+                            norm_exists = NormHeight.objects.filter(
+                                height_group=employee.height_group,
+                                ppe_type=ppe_type
+                            ).exists()
+                        
+                        if not norm_exists:
+                            raise ValueError(f"Нет нормы для типа СИЗ: {ppe_name}")
+                        
+                        excel_unit = str(row['Базисная ЕИ']).strip().lower()
+                        model_unit = UNIT_CONVERSION.get(excel_unit)
+                        if not model_unit:
+                            raise ValueError(f"Недопустимая единица измерения: {excel_unit}")
+
+                        expiration_date = None
+                        if pd.notna(row['Прог.ДатаСписан']):
+                            try:
+                                expiration_date = parser.parse(str(row['Прог.ДатаСписан'])).date()
+                            except:
+                                raise ValueError("Неверный формат даты списания")
+
+                        lifespan_months = int(row['Срок использования'])
+                        issue_date = expiration_date - relativedelta(months=lifespan_months) if expiration_date else date.today()
+
+                        item_name = str(row['Наименование ОС'])
+                        item_size = "Не указан"
+                        
+                        size_patterns = [
+                            r'(\d{2}-\d{2}\s*/\s*\d{3}-\d{3})\b',
+                            r'\b(?:разм|р|размер)[.:]?\s*(\S+)',
+                            r'\b(\d{2,3}(?:-\d{2,3})?)\b'
+                        ]
+
+                        for pattern in size_patterns:
+                            match = re.search(pattern, item_name, re.IGNORECASE)
+                            if match:
+                                item_size = match.group(1)
+                                item_name = re.sub(pattern, '', item_name, flags=re.IGNORECASE).strip()
+                                break
+
+                        # Create Issue objects and collect them
+                        for _ in range(quantity):
+                            issue = Issue(
+                                employee=employee,
+                                ppe_type=ppe_type,
+                                item_name=item_name,
+                                item_mu=model_unit,
+                                issue_date=issue_date,
+                                expiration_date=expiration_date,
+                                item_size=item_size
+                            )
+                            issues_to_create.append(issue)
+                        
+                        results['created'].append({
+                            'ppe_type': ppe_type.name,
+                            'item_name': item_name,
+                            'item_size': item_size,
+                            'quantity': quantity,
+                            'expiration_date': expiration_date
+                        })
+
+                    except ValueError as e:
+                        results['errors'].append({
+                            'type': 'row',
+                            'row': index + 2,
+                            'message': str(e),
+                            'data': row.to_dict()
+                        })
+                    except PPEType.DoesNotExist:
+                        results['errors'].append({
+                            'type': 'row',
+                            'row': index + 2,
+                            'message': f"Тип СИЗ '{ppe_name}' не найден",
+                            'data': row.to_dict()
+                        })
+
+                # Bulk create all valid issues
+                if issues_to_create:
+                    try:
+                        with transaction.atomic():
+                            Issue.objects.bulk_create(issues_to_create)
+                    except Exception as e:
+                        results['errors'].append({
+                            'type': 'global',
+                            'message': f"Ошибка при создании записей: {str(e)}"
+                        })
+
+            except Exception as e:
+                results['errors'].append({
+                    'type': 'global',
+                    'message': str(e)
+                })
+
+            return render(request, 'core/import_item_results.html', {
+                'employee': employee,
+                'results': results
+            })
+
+    else:
+        form = EmployeeImportItemsForm()
+
+    return render(request, 'core/employee_import_items.html', {
+        'employee': employee,
+        'form': form
+    })
 
 
 @login_required
@@ -1232,154 +1435,3 @@ def flushing_issue_delete(request, issue_id):
     except Exception as e:
         messages.error(request, f"Ошибка удаления: {str(e)}")
     return redirect('core:edit_flushing_issues', employee_id=employee_id)
-
-def employee_import_items(request, employee_id):
-    employee = get_object_or_404(Employee, pk=employee_id)
-    results = {'created': [], 'errors': []}
-    issues_to_create = []  # List to collect valid Issue objects
-
-    if request.method == 'POST':
-        form = EmployeeImportItemsForm(request.POST, request.FILES)
-        if form.is_valid():
-            try:
-                file = request.FILES['sap_file']
-                df = pd.read_excel(BytesIO(file.read()))
-
-                required_columns = [
-                    'Наименование группы СИЗ',
-                    'Наименование ОС',
-                    'Базисная ЕИ',
-                    'Прог.ДатаСписан',
-                    'Срок использования',
-                    'Получено.Количество'
-                ]
-                
-                if not set(required_columns).issubset(df.columns):
-                    missing = set(required_columns) - set(df.columns)
-                    raise ValueError(f"Отсутствуют колонки: {', '.join(missing)}")
-
-                # Process each row and collect valid issues
-                for index, row in df.iterrows():
-                    try:
-                        quantity = int(row['Получено.Количество'])
-                        if quantity <= 0:
-                            continue
-
-                        ppe_name = str(row['Наименование группы СИЗ']).strip()
-                        if not ppe_name:
-                            raise ValueError("Пустое название типа СИЗ")
-                        
-                        ppe_type = PPEType.objects.get(name__iexact=ppe_name)
-                        
-                        norm_exists = False
-                        if employee.position:
-                            norm_exists = Norm.objects.filter(
-                                position=employee.position,
-                                ppe_type=ppe_type
-                            ).exists()
-                        
-                        if not norm_exists and employee.height_group:
-                            norm_exists = NormHeight.objects.filter(
-                                height_group=employee.height_group,
-                                ppe_type=ppe_type
-                            ).exists()
-                        
-                        if not norm_exists:
-                            raise ValueError(f"Нет нормы для типа СИЗ: {ppe_name}")
-                        
-                        excel_unit = str(row['Базисная ЕИ']).strip().lower()
-                        model_unit = UNIT_CONVERSION.get(excel_unit)
-                        if not model_unit:
-                            raise ValueError(f"Недопустимая единица измерения: {excel_unit}")
-
-                        expiration_date = None
-                        if pd.notna(row['Прог.ДатаСписан']):
-                            try:
-                                expiration_date = parser.parse(str(row['Прог.ДатаСписан'])).date()
-                            except:
-                                raise ValueError("Неверный формат даты списания")
-
-                        lifespan_months = int(row['Срок использования'])
-                        issue_date = expiration_date - relativedelta(months=lifespan_months) if expiration_date else date.today()
-
-                        item_name = str(row['Наименование ОС'])
-                        item_size = "Не указан"
-                        
-                        size_patterns = [
-                            r'(\d{2}-\d{2}\s*/\s*\d{3}-\d{3})\b',
-                            r'\b(?:разм|р|размер)[.:]?\s*(\S+)',
-                            r'\b(\d{2,3}(?:-\d{2,3})?)\b'
-                        ]
-
-                        for pattern in size_patterns:
-                            match = re.search(pattern, item_name, re.IGNORECASE)
-                            if match:
-                                item_size = match.group(1)
-                                item_name = re.sub(pattern, '', item_name, flags=re.IGNORECASE).strip()
-                                break
-
-                        # Create Issue objects and collect them
-                        for _ in range(quantity):
-                            issue = Issue(
-                                employee=employee,
-                                ppe_type=ppe_type,
-                                item_name=item_name,
-                                item_mu=model_unit,
-                                issue_date=issue_date,
-                                expiration_date=expiration_date,
-                                item_size=item_size
-                            )
-                            issues_to_create.append(issue)
-                        
-                        results['created'].append({
-                            'ppe_type': ppe_type.name,
-                            'item_name': item_name,
-                            'item_size': item_size,
-                            'quantity': quantity,
-                            'expiration_date': expiration_date
-                        })
-
-                    except ValueError as e:
-                        results['errors'].append({
-                            'type': 'row',
-                            'row': index + 2,
-                            'message': str(e),
-                            'data': row.to_dict()
-                        })
-                    except PPEType.DoesNotExist:
-                        results['errors'].append({
-                            'type': 'row',
-                            'row': index + 2,
-                            'message': f"Тип СИЗ '{ppe_name}' не найден",
-                            'data': row.to_dict()
-                        })
-
-                # Bulk create all valid issues
-                if issues_to_create:
-                    try:
-                        with transaction.atomic():
-                            Issue.objects.bulk_create(issues_to_create)
-                    except Exception as e:
-                        results['errors'].append({
-                            'type': 'global',
-                            'message': f"Ошибка при создании записей: {str(e)}"
-                        })
-
-            except Exception as e:
-                results['errors'].append({
-                    'type': 'global',
-                    'message': str(e)
-                })
-
-            return render(request, 'core/import_item_results.html', {
-                'employee': employee,
-                'results': results
-            })
-
-    else:
-        form = EmployeeImportItemsForm()
-
-    return render(request, 'core/employee_import_items.html', {
-        'employee': employee,
-        'form': form
-    })

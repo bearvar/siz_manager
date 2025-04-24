@@ -421,6 +421,10 @@ class FlushingAgentIssue(models.Model):
         choices=MEASUREMENT_UNITS,
         default="мл."
     )
+    is_active = models.BooleanField(
+        "Активно",
+        default=True
+    )
     
     class Meta:
         verbose_name = "Выдача моющего средства"

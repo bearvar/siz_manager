@@ -52,12 +52,12 @@
           <td class="d-flex gap-2">
               <button type="submit" class="btn btn-sm btn-primary mr-1" style="height: 31px; min-width: 85px;">Сохранить</button>
             </form>
-            <form method="post" action="{% url 'core:issue_delete' issue_id=issue.id %}">
+            <form method="post" action="{% url 'core:flushing_issue_delete' issue_id=issue.id %}">
               {% csrf_token %}
               <button type="submit" class="btn btn-sm btn-danger mr-1" style="height: 31px; min-width: 85px;">Удалить</button>
             </form>
             <button type="button" class="btn btn-sm btn-primary transfer-btn ms-2" data-issue-id="{{ issue.id }}" style="height: 31px; min-width: 85px;">Передать</button>
-            <form method="post" action="{% url 'core:issue_transfer' issue_id=issue.id %}" class="transfer-form d-none" id="transfer-form-{{ issue.id }}">
+            <form method="post" action="{% url 'core:flushing_issue_transfer' issue_id=issue.id %}" class="transfer-form d-none" id="transfer-form-{{ issue.id }}">
               {% csrf_token %}
               <div class="mt-2">
                 <select name="new_employee_id" class="form-select form-select-sm">
@@ -76,7 +76,7 @@
         </tr>
       {% empty %}
         <tr>
-          <td colspan="6" class="text-center">Нет активных выдач</td>
+          <td colspan="5" class="text-center">Нет активных выдач</td>
         </tr>
       {% endfor %}
     </tbody>
