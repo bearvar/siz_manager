@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Position, Employee, Norm, Issue,
     FlushingAgentType, FlushingAgentNorm,
-    Container, FlushingAgentIssue
+    FlushingAgentIssue
 )
 
 @admin.register(Position)
@@ -26,12 +26,6 @@ class FlushingAgentNormAdmin(admin.ModelAdmin):
     list_display = ('position', 'agent_type', 'monthly_ml')
     list_filter = ('position', 'agent_type')
     search_fields = ('position__position_name', 'agent_type__name')
-
-@admin.register(Container)
-class ContainerAdmin(admin.ModelAdmin):
-    list_display = ('employee', 'agent_type', 'total_ml', 'last_deduction')
-    list_filter = ('agent_type',)
-    search_fields = ('employee__last_name', 'agent_type__name')
 
 @admin.register(FlushingAgentIssue)
 class FlushingAgentIssueAdmin(admin.ModelAdmin):

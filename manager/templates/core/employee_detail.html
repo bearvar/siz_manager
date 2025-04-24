@@ -104,13 +104,14 @@
         </table>
 
         <h4>Выданные смывающие средства:</h4>
-        <table class="table table-striped">
+          <table class="table table-striped">
           <thead>
             <tr>
               <th class="text-center">Тип</th>
               <th class="text-center">Наименование</th>
               <th class="text-center">Объем</th>
-              <th class="text-center">В наличии</th>
+              <th class="text-center">Дата выдачи</th>
+              <th class="text-center">Статус</th>
             </tr>
           </thead>
           <tbody>
@@ -119,11 +120,18 @@
                 <td>{{ issue.agent_type.name }}</td>
                 <td>{{ issue.item_name }}</td>
                 <td class="text-center">{{ issue.volume_ml }} мл</td>
-                <td class="text-center">{{ issue.volume_ml }} мл</td>
+                <td class="text-center">{{ issue.issue_date|date:"d.m.Y" }}</td>
+                <td class="text-center">
+                {% if issue.is_active %}
+                    <span class="text-success">В наличии</span>
+                {% else %}
+                    <span class="text-danger">Использовано</span>
+                {% endif %}
+            </td>
               </tr>
             {% empty %}
               <tr>
-                <td colspan="4">Нет выданных смывающих средств</td>
+                <td colspan="5">Нет выданных смывающих средств</td>
               </tr>
             {% endfor %}
           </tbody>

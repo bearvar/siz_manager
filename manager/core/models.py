@@ -279,56 +279,6 @@ class FlushingAgentNorm(models.Model):
     def __str__(self):
         return f"{self.position}: {self.agent_type} - {self.monthly_ml}мл/мес"
 
-class Container(models.Model):
-    """Виртуальный контейнер для учета моющих средств"""
-    employee = models.ForeignKey(
-        Employee,
-        on_delete=models.CASCADE,
-        verbose_name="Сотрудник"
-    )
-    agent_type = models.ForeignKey(
-        FlushingAgentType,
-        on_delete=models.CASCADE,
-        verbose_name="Тип средства"
-    )
-    total_ml = models.PositiveIntegerField(
-        "Общий объем (мл)",
-        default=0
-    )
-    last_deduction = models.DateField(
-        "Последнее списание",
-        null=True,
-        blank=True
-    )
-    
-    class Meta:
-        unique_together = ['employee', 'agent_type']
-        indexes = [
-            models.Index(fields=['employee', 'agent_type']),
-        ]
-        verbose_name = "Контейнер"
-        verbose_name_plural = "Контейнеры"
-
-    def __str__(self):
-        return f"{self.employee} - {self.agent_type} ({self.total_ml}мл)"
-
-    def deduct_monthly(self):
-        """Выполняет ежемесячное списание"""
-        today = timezone.now().date()
-        if self.last_deduction and self.last_deduction.month == today.month:
-            return
-        
-        try:
-            norm = FlushingAgentNorm.objects.get(
-                position=self.employee.position,
-                agent_type=self.agent_type
-            )
-            self.total_ml = max(0, self.total_ml - norm.monthly_ml)
-            self.last_deduction = today
-            self.save()
-        except FlushingAgentNorm.DoesNotExist:
-            pass
-
 class NormHeight(models.Model):
     height_group = models.ForeignKey(
         HeightGroup,
@@ -425,24 +375,25 @@ class FlushingAgentIssue(models.Model):
         "Активно",
         default=True
     )
+    consumption_date = models.DateField(
+        "Дата полного расходования",
+        null=True,
+        blank=True
+    )
     
     class Meta:
         verbose_name = "Выдача моющего средства"
         verbose_name_plural = "Выдачи моющих средств"
-        ordering = ['-issue_date']
+        ordering = ['issue_date']
+        indexes = [
+            models.Index(fields=['employee', 'agent_type', 'is_active', 'issue_date']),
+        ]
 
     def __str__(self):
         return f"{self.employee} - {self.item_name} ({self.volume_ml}мл)"
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # Обновляем контейнер при создании новой выдачи
-        container, created = Container.objects.get_or_create(
-            employee=self.employee,
-            agent_type=self.agent_type
-        )
-        container.total_ml += self.volume_ml
-        container.save()
 
 class Issue(models.Model):
     employee = models.ForeignKey(

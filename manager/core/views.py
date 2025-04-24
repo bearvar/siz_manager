@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from .forms import EmployeeForm, IssueCreateForm, NormCreateForm, PositionForm, NormHeightCreateForm, SAPImportForm, EmployeeImportItemsForm, FlushingNormCreateForm, FlushingAgentIssueForm
-from .models import Employee, Issue, Norm, PPEType, Position, NormHeight, HeightGroup, FlushingAgentIssue, FlushingAgentType, FlushingAgentNorm, Container
+from .models import Employee, Issue, Norm, PPEType, Position, NormHeight, HeightGroup, FlushingAgentIssue, FlushingAgentType, FlushingAgentNorm
 from users.models import CustomUser
 from xmlrpc.client import Boolean
 from django.views.decorators.http import require_http_methods
@@ -348,14 +348,12 @@ def employee_detail(request, employee_id):
     
     # Add flushing agent data
     flushing_issues = FlushingAgentIssue.objects.filter(employee=employee)
-    containers = Container.objects.filter(employee=employee)
     
     context = {
         'employee': employee,
         'issue_groups': issue_groups,
         'norms_status': norms_status,
         'flushing_issues': flushing_issues,
-        'containers': containers
     }
     return render(request, 'core/employee_detail.html', context)
 
@@ -506,14 +504,6 @@ def create_flushing_issue(request, employee_id):
                         item_name=form.cleaned_data['item_name']
                     )
                     issue.save()
-                    
-                    # Update container
-                    container, created = Container.objects.get_or_create(
-                        employee=employee,
-                        agent_type=issue.agent_type
-                    )
-                    container.total_ml += issue.volume_ml
-                    container.save()
                     
                     messages.success(request, 'Смывающее средство успешно выдано')
                     return redirect('core:employee_detail', employee_id=employee.id)
@@ -1402,14 +1392,6 @@ def flushing_issue_update(request, issue_id):
             '%d.%m.%Y'
         ).date()
         
-        # Update container
-        container = Container.objects.get(
-            employee=issue.employee,
-            agent_type=issue.agent_type
-        )
-        container.total_ml += (issue.volume_ml - float(request.POST.get('original_volume', 0)))
-        container.save()
-        
         issue.save()
         messages.success(request, "Изменения смывающего средства сохранены")
     except Exception as e:
@@ -1422,14 +1404,6 @@ def flushing_issue_delete(request, issue_id):
     issue = get_object_or_404(FlushingAgentIssue, pk=issue_id)
     employee_id = issue.employee.id
     try:
-        # Update container
-        container = Container.objects.get(
-            employee=issue.employee,
-            agent_type=issue.agent_type
-        )
-        container.total_ml -= issue.volume_ml
-        container.save()
-        
         issue.delete()
         messages.success(request, "Смывающее средство удалено")
     except Exception as e:

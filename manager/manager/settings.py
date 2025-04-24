@@ -29,6 +29,21 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 
+# Django Q configuration
+Q_CLUSTER = {
+    'name': 'FlushingAgents',
+    'workers': 1,
+    'timeout': 300,
+    'retry': 3600,
+    'schedule': {
+        'daily_flushing_check': {
+            'fn': 'core.management.commands.process_flushing_agents.Command.handle',
+            'schedule': {'hour': '3', 'minute': '0'},  # Daily at 3 AM
+        },
+    },
+    'orm': 'default',
+}
+
 # Application definition
 
 INSTALLED_APPS = [
