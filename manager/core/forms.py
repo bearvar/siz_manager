@@ -260,7 +260,7 @@ class IssueCreateForm(forms.ModelForm):
 class FlushingAgentIssueForm(forms.ModelForm):
     agent_type = forms.ModelChoiceField(
         label="Тип средства",
-        queryset=FlushingAgentType.objects.none()  # Default empty queryset
+        queryset=FlushingAgentType.objects.none()
     )
     item_name = forms.CharField(
         label="Название средства",
@@ -270,8 +270,8 @@ class FlushingAgentIssueForm(forms.ModelForm):
             'placeholder': 'Например: Мыло жидкое "Clean", Спрей Mosquitall'
         })
     )
-    volume_ml = forms.IntegerField(
-        label="Объем (мл)",
+    volume_ml_nominal = forms.IntegerField(
+        label="Номинальный объем (мл)",
         min_value=1,
         widget=forms.NumberInput(attrs={
             'class': 'form-control',
@@ -294,15 +294,23 @@ class FlushingAgentIssueForm(forms.ModelForm):
 
     class Meta:
         model = FlushingAgentIssue
-        fields = ['agent_type', 'item_name', 'volume_ml', 'issue_date']
+        fields = ['agent_type', 'item_name', 'volume_ml_nominal', 'issue_date']
         labels = {
             'item_name': 'Конкретное название средства',
-            'volume_ml': 'Объем выдачи (мл)'
+            'volume_ml_nominal': 'Объем флакона (мл)'
         }
         widgets = {
             'agent_type': forms.Select(attrs={'class': 'form-select'}),
-            'volume_ml': forms.NumberInput(attrs={'class': 'form-control'})
+            'volume_ml_nominal': forms.NumberInput(attrs={'class': 'form-control'})
         }
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.employee = self.employee
+        instance.volume_ml = self.cleaned_data['volume_ml_nominal']  # Set initial volume
+        if commit:
+            instance.save()
+        return instance
 
     def __init__(self, *args, **kwargs):
         self.employee = kwargs.pop('employee', None)

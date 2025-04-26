@@ -340,6 +340,66 @@ class Norm(models.Model):
         )
 
 
+class FlushingAgentTransaction(models.Model):
+    """Транзакция обработки моющих средств"""
+    processed_date = models.DateField(
+        "Дата обработки",
+        auto_now_add=True
+    )
+    reference_month = models.DateField(
+        "Расчётный месяц",
+        help_text="Первый день месяца, за который проводится расчёт"
+    )
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        verbose_name="Сотрудник"
+    )
+    agent_type = models.ForeignKey(
+        FlushingAgentType,
+        on_delete=models.CASCADE,
+        verbose_name="Тип средства"
+    )
+    total_consumed = models.PositiveIntegerField(
+        "Всего списано (мл)"
+    )
+
+    class Meta:
+        verbose_name = "Транзакция моющих средств"
+        verbose_name_plural = "Транзакции моющих средств"
+        indexes = [
+            models.Index(fields=['reference_month', 'employee', 'agent_type']),
+        ]
+
+    def __str__(self):
+        return f"{self.reference_month:%Y-%m} {self.employee} {self.agent_type}"
+
+class TransactionDetail(models.Model):
+    """Детализация изменений в выдаче"""
+    transaction = models.ForeignKey(
+        FlushingAgentTransaction,
+        on_delete=models.CASCADE,
+        related_name='details'
+    )
+    issue = models.ForeignKey(
+        'FlushingAgentIssue',
+        on_delete=models.CASCADE,
+        verbose_name="Выдача"
+    )
+    consumed_volume = models.PositiveIntegerField(
+        "Списано (мл)"
+    )
+    previous_volume = models.PositiveIntegerField(
+        "Объём до списания"
+    )
+    was_active = models.BooleanField(
+        "Было активно"
+    )
+
+    class Meta:
+        verbose_name = "Деталь транзакции"
+        verbose_name_plural = "Детали транзакций"
+
 class FlushingAgentIssue(models.Model):
     """Выдача моющих средств сотруднику"""
     employee = models.ForeignKey(
@@ -356,6 +416,10 @@ class FlushingAgentIssue(models.Model):
         "Наименование средства",
         max_length=255,
         help_text="Введите конкретное название средства (например: 'Мыло жидкое Лошадиная сила')"
+    )
+    volume_ml_nominal = models.PositiveIntegerField(
+        "Объем (мл)",
+        validators=[MinValueValidator(1)]
     )
     volume_ml = models.PositiveIntegerField(
         "Объем (мл)",

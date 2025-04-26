@@ -74,10 +74,10 @@
                 Объем (мл)
               </label>
               <div class="col-md-8">
-                {{ form.volume_ml|addclass:"form-control fixed-select" }}
-                {% if form.volume_ml.help_text %}
+                {{ form.volume_ml_nominal|addclass:"form-control fixed-select" }}
+                {% if form.volume_ml_nominal.help_text %}
                   <small class="form-text text-muted">
-                    {{ form.volume_ml.help_text|safe }}
+                    {{ form.volume_ml_nominal.help_text|safe }}
                   </small>
                 {% endif %}
               </div>

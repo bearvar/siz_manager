@@ -6,6 +6,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from django.contrib import messages
+from django.core import management
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -495,14 +496,9 @@ def create_flushing_issue(request, employee_id):
                             form.add_error('issue_date', 'Неверный формат даты. Используйте ДД.ММ.ГГГГ')
                             raise forms.ValidationError('Invalid date format')
                     
-                    # Create flushing agent issue with parsed date
-                    issue = FlushingAgentIssue(
-                        employee=employee,
-                        agent_type=form.cleaned_data['agent_type'],
-                        volume_ml=form.cleaned_data['volume_ml'],
-                        issue_date=issue_date,
-                        item_name=form.cleaned_data['item_name']
-                    )
+                    # Save through form with commit=False to set additional fields
+                    issue = form.save(commit=False)
+                    issue.employee = employee
                     issue.save()
                     
                     messages.success(request, 'Смывающее средство успешно выдано')
@@ -735,6 +731,7 @@ def flushing_issue_transfer(request, issue_id):
             employee=new_employee,
             agent_type=issue.agent_type,
             item_name=issue.item_name,
+            volume_ml_nominal=issue.volume_ml_nominal,
             volume_ml=issue.volume_ml,
             issue_date=issue.issue_date,
             is_active=True
@@ -1384,16 +1381,33 @@ def flushing_issue_update(request, issue_id):
     issue = get_object_or_404(FlushingAgentIssue, pk=issue_id)
     employee_id = issue.employee.id
     try:
-        # Update fields from form data
+        new_volume_ml_nominal = float(request.POST.get('volume_ml_nominal', 0))
+        current_volume_ml = issue.volume_ml
+        current_nominal = issue.volume_ml_nominal
+
+        # Calculate new volume_ml based on current state
+        if current_nominal == current_volume_ml:
+            new_volume_ml = new_volume_ml_nominal
+        else:
+            new_volume_ml = (new_volume_ml_nominal - current_nominal) + current_volume_ml
+
+        # Check if the new volume_ml is negative
+        if new_volume_ml < 0:
+            messages.error(request, "Объем (текущий) не может быть отрицательным")
+            return redirect('core:edit_flushing_issues', employee_id=employee_id)
+
+        # Update other fields
         issue.item_name = request.POST.get('item_name', '').strip()
-        issue.volume_ml = float(request.POST.get('volume_ml', 0))
+        issue.volume_ml = new_volume_ml
+        issue.volume_ml_nominal = new_volume_ml_nominal
         issue.issue_date = datetime.strptime(
             request.POST['issue_date'].strip(),
             '%d.%m.%Y'
         ).date()
         
         issue.save()
-        messages.success(request, "Изменения смывающего средства сохранены")
+        management.call_command('process_flushing_agents')
+        messages.success(request, "Изменения смывающего средства сохранены и обработка выполнена")
     except Exception as e:
         messages.error(request, f"Ошибка обновления: {str(e)}")
     return redirect('core:edit_flushing_issues', employee_id=employee_id)
