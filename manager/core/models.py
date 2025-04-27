@@ -491,6 +491,11 @@ class Issue(models.Model):
         verbose_name="Сотрудник",
         related_name='issues'
     )
+    
+    class Meta:
+        verbose_name = 'Выдача СИЗ'
+        verbose_name_plural = 'Выдачи СИЗ'
+        ordering = ['-issue_date']
     ppe_type = models.ForeignKey(
         PPEType,
         on_delete=models.CASCADE,
