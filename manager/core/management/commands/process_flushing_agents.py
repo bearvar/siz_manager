@@ -2,134 +2,126 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from core.models import (
-    FlushingAgentNorm, 
-    FlushingAgentIssue, 
+    FlushingAgentNorm,
+    FlushingAgentIssue,
     Employee,
     FlushingAgentTransaction,
     TransactionDetail
 )
 from django.db import transaction
 
-def get_reference_date():
-    """Get first day of previous month for processing"""
-    today = timezone.now().date()
-    if today.day == 1:
-        return (today - relativedelta(months=1)).replace(day=1)
-    return today.replace(day=1) - relativedelta(days=1)
-
-def process_employee_flushing(employee, reference_date):
-    """Process flushing agents for a single employee"""
-    processed = []
+def get_months_to_process(employee, agent_type, current_date):
+    """Calculate all months between first issue and current date"""
+    first_issue = FlushingAgentIssue.objects.filter(
+        employee=employee,
+        agent_type=agent_type,
+        is_active=True
+    ).order_by('issue_date').first()
     
-    # Get all agent types with norms for this employee's position
-    if not employee.position:
-        return processed
-
-    # Check for existing transactions for this reference month
-    existing_transactions = FlushingAgentTransaction.objects.filter(
-        reference_month=reference_date,
-        employee=employee
-    ).prefetch_related('details')
-
-    # Rollback existing transactions if found
-    if existing_transactions.exists():
-        for transaction in existing_transactions:
-            for detail in transaction.details.all():
-                issue = detail.issue
-                issue.volume_ml += detail.consumed_volume
-                issue.is_active = detail.was_active
-                if issue.volume_ml == 0:
-                    issue.consumption_date = None
-                issue.save()
-            transaction.delete()
-        processed.append("Отменены предыдущие списания за этот месяц")
-
-    agent_norms = FlushingAgentNorm.objects.filter(
-        position=employee.position
-    ).select_related('agent_type')
+    if not first_issue:
+        return []
+        
+    start_month = first_issue.issue_date.replace(day=1)
+    end_month = current_date.replace(day=1)
     
-    for norm in agent_norms:
-        # Get active issues for this agent type ordered by issue date (FIFO)
-        issues = FlushingAgentIssue.objects.filter(
+    months = []
+    while start_month <= end_month:
+        months.append(start_month)
+        start_month += relativedelta(months=1)
+    
+    return months
+
+def process_monthly_consumption(employee, agent_type, norm, month):
+    """Process consumption for a specific month using FIFO principle"""
+    with transaction.atomic():
+        # Get or create monthly transaction
+        monthly_transaction, created = FlushingAgentTransaction.objects.get_or_create(
+            reference_month=month,
             employee=employee,
-            agent_type=norm.agent_type,
-            is_active=True
-        ).order_by('issue_date')
-        
-        required_volume = norm.monthly_ml
-        remaining_volume = required_volume
-        total_consumed = 0
-        
-        # Create transaction record
-        transaction = FlushingAgentTransaction.objects.create(
-            reference_month=reference_date,
-            employee=employee,
-            agent_type=norm.agent_type,
-            total_consumed=0
+            agent_type=agent_type,
+            defaults={'total_consumed': 0}
         )
         
+        if not created:
+            return []  # Skip already processed months
+
+        issues = FlushingAgentIssue.objects.filter(
+            employee=employee,
+            agent_type=agent_type,
+            is_active=True
+        ).order_by('issue_date')
+
+        remaining_volume = norm.monthly_ml
+        processed_messages = []
+
         for issue in issues:
             if remaining_volume <= 0:
                 break
-                
+
             available = issue.volume_ml
-            original_volume = issue.volume_ml
-            was_active = issue.is_active
+            consumed = min(available, remaining_volume)
             
-            if available > remaining_volume:
-                # Partially consume this issue
-                issue.volume_ml -= remaining_volume
-                consumed = remaining_volume
-                remaining_volume = 0
-            else:
-                # Fully consume this issue
-                consumed = available
-                remaining_volume -= available
-                issue.volume_ml = 0
+            # Update issue status
+            issue.volume_ml -= consumed
+            if issue.volume_ml <= 0:
                 issue.is_active = False
-                issue.consumption_date = reference_date
-            
-            issue.save()
-            total_consumed += consumed
+                issue.consumption_date = month
             
             # Create transaction detail
             TransactionDetail.objects.create(
-                transaction=transaction,
+                transaction=monthly_transaction,
                 issue=issue,
                 consumed_volume=consumed,
-                previous_volume=original_volume,
-                was_active=was_active
+                previous_volume=issue.volume_ml + consumed,
+                was_active=True
             )
             
-            processed.append(f"Списано {consumed}мл из выдачи {issue.item_name} ({issue.issue_date})")
-        
-        # Update transaction with total consumed
-        transaction.total_consumed = total_consumed
-        transaction.save()
-        
+            monthly_transaction.total_consumed += consumed
+            remaining_volume -= consumed
+            issue.save()
+
+            processed_messages.append(
+                f"{month.strftime('%Y-%m')}: Consumed {consumed}ml from {issue.item_name}"
+            )
+
         if remaining_volume > 0:
-            processed.append(f"Внимание! Недостаточно средств по норме {norm.agent_type.name}: не хватило {remaining_volume}мл")
-    
-    return processed
+            processed_messages.append(
+                f"{month.strftime('%Y-%m')}: Warning: Shortage of {remaining_volume}ml"
+            )
+
+        monthly_transaction.save()
+        return processed_messages
 
 class Command(BaseCommand):
-    help = 'Process flushing agents consumption based on norms'
+    help = 'Process flushing agent consumption according to FIFO principle'
 
     def handle(self, *args, **options):
-        reference_date = get_reference_date()
-        self.stdout.write(f"Обработка расходов моющих средств на {reference_date.strftime('%Y-%m')}")
+        current_date = timezone.now().date()
+        self.stdout.write(f"Processing consumption up to {current_date.strftime('%Y-%m-%d')}")
         
-        # Process all active employees
-        employees = Employee.objects.filter(position__isnull=False).prefetch_related('flushingagentissue_set')
+        employees = Employee.objects.filter(
+            position__isnull=False
+        ).prefetch_related('flushingagentissue_set')
         
         total_processed = 0
         with transaction.atomic():
             for employee in employees:
-                results = process_employee_flushing(employee, reference_date)
-                if results:
-                    total_processed += 1
-                    self.stdout.write(f"\nСотрудник: {employee}")
-                    for msg in results:
-                        self.stdout.write(f"  {msg}")
-        
-        self.stdout.write(f"\nОбработка завершена. Затронуто сотрудников: {total_processed}")
+                if not employee.position:
+                    continue
+                
+                for norm in FlushingAgentNorm.objects.filter(position=employee.position):
+                    months = get_months_to_process(employee, norm.agent_type, current_date)
+                    for month in months:
+                        results = process_monthly_consumption(
+                            employee,
+                            norm.agent_type,
+                            norm,
+                            month
+                        )
+                        if results:
+                            total_processed += 1
+                            self.stdout.write(f"\n{employee} - {norm.agent_type}:")
+                            for msg in results:
+                                self.stdout.write(f"  {msg}")
+
+        self.stdout.write(f"\nProcessing complete. Updated {total_processed} records.")
