@@ -18,40 +18,61 @@
             <span class="badge badge-primary">Всего позиций: {{ quarter.count }}</span>
         </div>
         <div class="card-body p-0">
-            {% if quarter.issue_groups %}
             <div class="list-group list-group-flush">
                 <div class="list-group-item">
-                <table class="table table-sm table-hover mb-0">
-                    <thead class="bg-light">
-                        <tr>
-                            <th style="width: 32%" class="text-center">Тип СИЗ</th>
-                            <th style="width: 29%" class="text-center">Наименование</th>
-                            <th style="width: 10%" class="text-center">Размер</th>
-                            <th style="width: 5%" class="text-center">Количество</th>
-                            <th style="width: 12%" class="text-center">Дата выдачи</th>
-                            <th style="width: 12%" class="text-center">Списание до</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for group in quarter.issue_groups %}
-                        <tr>
-                            <td>{{ group.issue.ppe_type.name }}</td>
-                            <td>{{ group.issue.item_name }}</td>
-                            <td class="text-center">{{ group.issue.item_size }}</td>
-                            <td class="text-center">{{ group.quantity }}</td>
-                            <td class="text-center">{{ group.issue.issue_date|date:"d.m.Y" }}</td>
-                            <td class="{% if group.issue.expiration_date < today %}text-danger{% endif %} text-center">
-                                {{ group.issue.expiration_date|date:"d.m.Y" }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                    {% if quarter.issue_groups %}
+                    <h5 class="mt-4">Средства индивидуальной защиты</h5>
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th style="width: 32%" class="text-center">Тип СИЗ</th>
+                                <th style="width: 29%" class="text-center">Наименование</th>
+                                <th style="width: 10%" class="text-center">Размер</th>
+                                <th style="width: 5%" class="text-center">Количество</th>
+                                <th style="width: 12%" class="text-center">Дата выдачи</th>
+                                <th style="width: 12%" class="text-center">Списание до</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for group in quarter.issue_groups %}
+                            <tr>
+                                <td>{{ group.issue.ppe_type.name }}</td>
+                                <td>{{ group.issue.item_name }}</td>
+                                <td class="text-center">{{ group.issue.item_size }}</td>
+                                <td class="text-center">{{ group.quantity }}</td>
+                                <td class="text-center">{{ group.issue.issue_date|date:"d.m.Y" }}</td>
+                                <td class="{% if group.issue.expiration_date < today %}text-danger{% endif %} text-center">
+                                    {{ group.issue.expiration_date|date:"d.m.Y" }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                        <div class="alert alert-info m-3">Нет СИЗ с истекающим сроком в этом квартале</div>
+                    {% endif %}
+
+                    {% if quarter.flushing_needs %}
+                    <h5 class="mt-4">Смывающие средства</h5>
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="text-center">Тип средства</th>
+                                <th class="text-center">Требуется, мл</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for need in quarter.flushing_needs %}
+                            <tr>
+                                <td class="text-center">{{ need.agent_type.name }}</td>
+                                <td class="text-center">{{ need.volume_ml }} мл</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+                </div>
             </div>
-        </div>
-            {% else %}
-                <div class="alert alert-info m-3">Нет СИЗ с истекающим сроком в этом квартале</div>
-            {% endif %}
         </div>
     </div>
     {% endfor %}

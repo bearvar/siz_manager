@@ -278,6 +278,31 @@ class FlushingAgentNorm(models.Model):
 
     def __str__(self):
         return f"{self.position}: {self.agent_type} - {self.monthly_ml}мл/мес"
+        
+    def get_quarterly_needs(self, current_stock, current_date=None):
+        """Рассчитывает потребность в средстве на 4 квартала вперед"""
+        from dateutil.relativedelta import relativedelta
+        
+        current_date = current_date or timezone.now().date()
+        quarters = []
+        available = current_stock
+        
+        for q_num in range(4):
+            quarter_start = (current_date + relativedelta(months=3*q_num)).replace(day=1)
+            required = self.monthly_ml * 3  # Норма на квартал
+            needed = max(required - available, 0)
+            
+            if needed > 0:
+                quarters.append({
+                    'quarter': quarter_start,
+                    'required': required,
+                    'needed': needed
+                })
+                available = 0  # После выдачи новой партии
+            else:
+                available -= required  # Уменьшаем виртуальный остаток
+            
+        return [q for q in quarters if q['needed'] > 0]
 
 class NormHeight(models.Model):
     height_group = models.ForeignKey(

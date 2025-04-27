@@ -23,13 +23,16 @@
                     <div class="list-group-item">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h5 class="mb-0">
-                                {{ emp_data.employee.last_name }} 
-                                {{ emp_data.employee.first_name }} 
-                                {{ emp_data.employee.patronymic }}
+                                <b>
+                                    {{ emp_data.employee.last_name }} 
+                                    {{ emp_data.employee.first_name }} 
+                                    {{ emp_data.employee.patronymic }}
+                                </b>
                             </h5>
                             <span class="badge badge-info">Позиций: {{ emp_data.count }}</span>
                         </div>
                         
+                        <h5 class="mt-4">Средства индивидуальной защиты</h5>
                         <table class="table table-sm table-hover mb-0">
                             <thead class="bg-light">
                                 <tr>
@@ -56,6 +59,27 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+
+                        <!-- Add Flushing Agent Needs Table -->
+                        {% if emp_data.flushing_needs %}
+                        <h5 class="mt-4">Смывающие средства</h5>
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="text-center">Тип средства</th>
+                                    <th class="text-center">Требуется, мл</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for need in emp_data.flushing_needs %}
+                                <tr>
+                                    <td class="text-center">{{ need.agent_type.name }}</td>
+                                    <td class="text-center">{{ need.volume_ml }} мл</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>

@@ -1,31 +1,44 @@
+# Standard library imports
 import json
-import re
 import logging
-import openpyxl
+import re
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from io import BytesIO
+from xmlrpc.client import Boolean
+
+# Third-party imports
+import openpyxl
+import pandas as pd
+from dateutil import parser
 from dateutil.relativedelta import relativedelta
+
+# Django imports
+from django import forms
 from django.contrib import messages
-from django.core import management
 from django.contrib.auth.decorators import login_required
+from django.core import management
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db import models, transaction
+from django.db.models import Q, Sum
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.defaulttags import register
 from django.urls import reverse
 from django.utils import timezone
-from .forms import EmployeeForm, IssueCreateForm, NormCreateForm, PositionForm, NormHeightCreateForm, SAPImportForm, EmployeeImportItemsForm, FlushingNormCreateForm, FlushingAgentIssueForm
-from .models import Employee, Issue, Norm, PPEType, Position, NormHeight, HeightGroup, FlushingAgentIssue, FlushingAgentType, FlushingAgentNorm
-from users.models import CustomUser
-from xmlrpc.client import Boolean
 from django.views.decorators.http import require_http_methods
-from django.template.defaulttags import register
-from django.db import transaction
-from django import forms
-import pandas as pd
-from io import BytesIO
-from dateutil import parser
 
+# Local application imports
+from .forms import (
+    EmployeeForm, EmployeeImportItemsForm, FlushingAgentIssueForm,
+    FlushingNormCreateForm, IssueCreateForm, NormCreateForm,
+    NormHeightCreateForm, PositionForm, SAPImportForm
+)
+from .models import (
+    Employee, FlushingAgentIssue, FlushingAgentNorm, FlushingAgentType,
+    HeightGroup, Issue, Norm, NormHeight, PPEType, Position
+)
+from users.models import CustomUser
 
 logger = logging.getLogger(__name__)
 
@@ -34,13 +47,13 @@ def index(request):
     today = date.today()
     quarters = []
     
-    # Генерируем 4 ближайших квартала
+    # Generate 4 upcoming quarters
     current_date = today
     for _ in range(4):
         year = current_date.year
         quarter = (current_date.month - 1) // 3 + 1
         
-        # Определяем даты начала и конца квартала
+        # Determine quarter start and end dates
         if quarter == 1:
             start_date = date(year, 1, 1)
             end_date = date(year, 3, 31)
@@ -61,53 +74,44 @@ def index(request):
             'end_date': end_date
         })
         
-        # Переходим к следующему кварталу
         current_date = end_date + relativedelta(days=1)
     
-    # Собираем данные по каждому кварталу
     quarterly_data = []
     for q in quarters:
-        # Получаем все активные выдачи для квартала
+        # Fetch active issues for the quarter
         issues = Issue.objects.filter(
             expiration_date__gte=q['start_date'],
             expiration_date__lte=q['end_date'],
             is_active=True
         ).select_related('employee', 'ppe_type').order_by('expiration_date')
         
-        # Группируем по сотрудникам
+        # Group by employee and aggregate issues
         employees_issues = defaultdict(list)
         for issue in issues:
             employees_issues[issue.employee].append(issue)
         
-        # Формируем структуру данных для шаблона
         employees_list = []
         for employee, items in employees_issues.items():
-            # Group duplicate issues within each employee's items
+            # Group duplicate issues
             grouped = defaultdict(list)
             for issue in items:
                 key = (issue.ppe_type_id, issue.item_name, issue.item_size, issue.issue_date, issue.expiration_date)
                 grouped[key].append(issue)
             
-            # Create a list of groups with a sample issue and quantity
             issue_groups = [
-                {'issue': group[0], 'quantity': len(group)} for key, group in grouped.items()
+                {'issue': group[0], 'quantity': len(group)}
+                for key, group in grouped.items()
             ]
-            # Sort groups by expiration_date to maintain order
             issue_groups = sorted(issue_groups, key=lambda x: x['issue'].expiration_date)
             
             employees_list.append({
                 'employee': employee,
                 'issue_groups': issue_groups,
-                'count': len(items)  # Total number of items (sum of quantities)
+                'count': len(items),
+                'flushing_needs': []  # Initialize empty list for flushing needs
             })
-            
-            
-            # employees_list.append({
-            #     'employee': employee,
-            #     'issues': items,
-            #     'count': len(items)
-            # })
         
+        # Add employee data to quarterly_data
         quarterly_data.append({
             'quarter': q['quarter'],
             'year': q['year'],
@@ -116,6 +120,46 @@ def index(request):
             'employees': employees_list,
             'total': issues.count()
         })
+    
+    # Calculate flushing agent needs for each employee in each quarter
+    for quarter in quarterly_data:
+        year = quarter['year']
+        quarter_num = quarter['quarter']
+        
+        for emp_data in quarter['employees']:
+            employee = emp_data['employee']
+            if not employee.position:
+                continue
+            
+            # Get flushing norms for the position
+            flushing_norms = FlushingAgentNorm.objects.filter(position=employee.position)
+            current_date = today.replace(day=1)
+            flushing_needs = []
+            
+            for norm in flushing_norms:
+                # Calculate current stock for the agent
+                current_stock = FlushingAgentIssue.objects.filter(
+                    employee=employee,
+                    agent_type=norm.agent_type,
+                    is_active=True
+                ).aggregate(Sum('volume_ml'))['volume_ml__sum'] or 0
+                
+                # Get quarterly needs for this norm
+                needs = norm.get_quarterly_needs(current_stock, current_date)
+                for need in needs:
+                    need_q_date = need['quarter']
+                    need_year = need_q_date.year
+                    need_quarter = (need_q_date.month - 1) // 3 + 1
+                    
+                    # Match current quarter in the loop
+                    if need_year == year and need_quarter == quarter_num:
+                        flushing_needs.append({
+                            'agent_type': norm.agent_type,
+                            'volume_ml': need['needed']
+                        })
+            
+            # Attach flushing needs to the employee data
+            emp_data['flushing_needs'] = flushing_needs
     
     context = {
         'title': 'Главная страница',
@@ -1022,6 +1066,7 @@ def quarterly_ppe_needs(request, employee_id):
     }
     return render(request, 'core/quarterly_issues.html', context)
 
+from django.db.models import Sum
 
 def expiring_ppe_issues(request, employee_id):
     employee = get_object_or_404(Employee, pk=employee_id)
@@ -1057,9 +1102,11 @@ def expiring_ppe_issues(request, employee_id):
         
         # Move to next quarter
         current_date = end_date + relativedelta(days=1)
+
+    # Initialize quarterly_issues
+    quarterly_issues = []
     
     # Collect quarterly data
-    quarterly_issues = []
     for q in quarters:
         # Fetch issues for the quarter
         issues = Issue.objects.filter(
@@ -1097,6 +1144,38 @@ def expiring_ppe_issues(request, employee_id):
             'issue_groups': issue_groups,
             'count': issues.count()
         })
+    
+    # Calculate flushing agent needs if the employee has a position
+    if employee.position:
+        current_date = today.replace(day=1)
+        flushing_norms = FlushingAgentNorm.objects.filter(position=employee.position)
+        
+        # Lookup dictionary for quarterly needs {(year, quarter): {agent: ml}}
+        quarter_needs_lookup = defaultdict(lambda: defaultdict(int))
+        
+        for norm in flushing_norms:
+            # Get current stock for the agent type
+            current_stock = FlushingAgentIssue.objects.filter(
+                employee=employee,
+                agent_type=norm.agent_type,
+                is_active=True
+            ).aggregate(Sum('volume_ml'))['volume_ml__sum'] or 0
+            
+            # Calculate quarterly needs
+            needs = norm.get_quarterly_needs(current_stock, current_date)
+            for need in needs:
+                q_date = need['quarter']
+                quarter_key = (q_date.year, (q_date.month - 1) // 3 + 1)
+                quarter_needs_lookup[quarter_key][norm.agent_type] += need['needed']
+        
+        # Attach flushing needs to each quarter in quarterly_issues
+        for q in quarterly_issues:
+            year_quarter = (q['year'], q['quarter'])
+            needs = quarter_needs_lookup.get(year_quarter, {})
+            q['flushing_needs'] = [
+                {'agent_type': agent, 'volume_ml': ml}
+                for agent, ml in needs.items() if ml > 0
+            ]
     
     context = {
         'employee': employee,
