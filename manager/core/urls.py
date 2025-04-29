@@ -1,5 +1,9 @@
 from django.urls import path
+from django.http import JsonResponse
 from . import views
+
+def health_check(request):
+    return JsonResponse({"status": "ok"})
 
 app_name = 'core'
 
@@ -38,6 +42,7 @@ urlpatterns = [
     path('employees/<int:employee_id>/delete/', views.delete_employee, name='delete_employee'),
     path('employees/<int:employee_id>/quarterly_needs/', views.quarterly_ppe_needs, name='quarterly_needs'),
     path('employees/<int:employee_id>/expiring_issues/', views.expiring_ppe_issues, name='expiring_issues'),
+    path('process-flushing-agents/', views.process_flushing_agents, name='process_flushing_agents'),
     
     path('height_groups/', views.height_group_list, name='height_group_list'),
     path('height_group/<int:group_id>/', views.height_group_detail, name='height_group_detail'),

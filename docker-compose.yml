@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        - SECRET_KEY=${SECRET_KEY:-temporary-build-key}
+    volumes:
+      - ./data:/app/manager/data
+      - static_volume:/app/manager/static
+      - media_volume:/app/manager/media
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: sh -c "python manager/manage.py makemigrations core --noinput && python manager/manage.py migrate && python manager/manage.py collectstatic --noinput && gunicorn --bind 0.0.0.0:8000 --workers 3 --pythonpath manager manager.wsgi:application"
+
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - static_volume:/var/www/static
+      - media_volume:/var/www/media
+    depends_on:
+      - web
+
+volumes:
+  static_volume:
+  media_volume:

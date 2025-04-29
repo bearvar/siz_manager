@@ -23,6 +23,8 @@ from django.db import models, transaction
 from django.db.models import Q, Sum
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.core.management import call_command
+from django.contrib import messages
 from django.template.defaulttags import register
 from django.urls import reverse
 from django.utils import timezone
@@ -1502,3 +1504,20 @@ def flushing_issue_delete(request, issue_id):
     except Exception as e:
         messages.error(request, f"Ошибка удаления: {str(e)}")
     return redirect('core:edit_flushing_issues', employee_id=employee_id)
+
+@login_required
+@require_http_methods(["POST"])
+def process_flushing_agents(request):
+    """Глобальный пересчет смывающих средств для всех сотрудников"""
+    employee_id = request.POST.get('employee_id')
+    if not employee_id:
+        messages.error(request, 'Не указан ID сотрудника')
+        return redirect('core:index')
+    
+    try:
+        management.call_command('process_flushing_agents')
+        messages.success(request, 'Пересчет смывающих средств для всех сотрудников выполнен')
+    except Exception as e:
+        logger.error(f"Ошибка обработки смывающих средств: {str(e)}", exc_info=True)
+        messages.error(request, f'Ошибка при обработке: {str(e)}')
+    return redirect('core:employee_detail', employee_id=employee_id)

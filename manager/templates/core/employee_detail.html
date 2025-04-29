@@ -73,7 +73,7 @@
           <div class="alert alert-info">Должность не назначена. Нормы не определены.</div>
         {% endif %}
 
-        <h4>Выданные предметы:</h4>
+        <h4>Выданные средства индивидуальной защиты:</h4>
         <table class="table table-striped">
           <thead>
             <tr>
@@ -138,6 +138,14 @@
             {% endfor %}
           </tbody>
         </table>
+
+        <form method="post" action="{% url 'core:process_flushing_agents' %}" class="mb-3">
+          {% csrf_token %}
+          <input type="hidden" name="employee_id" value="{{ employee.id }}">
+          <button type="submit" class="btn btn-secondary mb-1">
+            Обновить расчет смывающих средств
+          </button>
+        </form>
 
       </div>
     </article>
