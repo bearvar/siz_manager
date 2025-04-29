@@ -1,20 +1,50 @@
-version: '3.8'
-
 services:
+  migrations:
+    build: 
+      context: .
+      args:
+        - SECRET_KEY=${SECRET_KEY}
+    volumes:
+      - persistent_data:/app/manager/data
+    env_file: 
+      - .env
+    command: sh -c "python manager/manage.py makemigrations core --noinput && python manager/manage.py migrate"
+    restart: on-failure
+    networks: 
+      backend:
+
   web:
     build:
       context: .
       args:
-        - SECRET_KEY=${SECRET_KEY:-temporary-build-key}
+        - SECRET_KEY=${SECRET_KEY}
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
+      interval: 300s
+      timeout: 10s
+      retries: 3
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
     volumes:
-      - ./data:/app/manager/data
-      - static_volume:/app/manager/static
+      - persistent_data:/app/manager/data
+      - static_volume:/app/manager/staticfiles
       - media_volume:/app/manager/media
     env_file:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
-    command: sh -c "python manager/manage.py makemigrations core --noinput && python manager/manage.py migrate && python manager/manage.py collectstatic --noinput && gunicorn --bind 0.0.0.0:8000 --workers 3 --pythonpath manager manager.wsgi:application"
+      - GUNICORN_CMD_ARGS=--access-logfile - --error-logfile - --capture-output --log-level info
+    command: dumb-init gunicorn --bind 0.0.0.0:8000 --workers 3 --pythonpath manager manager.wsgi:application
 
   nginx:
     image: nginx:1.25-alpine
@@ -22,11 +52,16 @@ services:
       - "80:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-      - static_volume:/var/www/static
+      - static_volume:/var/www/staticfiles  # Corrected path
       - media_volume:/var/www/media
     depends_on:
       - web
 
+networks:
+  backend:
+    driver: bridge
+
 volumes:
+  persistent_data:
   static_volume:
   media_volume:

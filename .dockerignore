@@ -1,3 +1,38 @@
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.pytest_cache
+.venv
+venv/
+
+# Environment
 .env
 *.secret
 *.key
+docker-compose.override.yml
+
+# Version control
+.git
+.github/
+
+# IDE
+.vscode/
+.idea/
+
+# Node
+node_modules/
+
+# Logs and databases
+*.log
+logs/
+*.sqlite3
+*.db
+local_settings.py
+
+# Local development
+tmp/
+data/
+media/
+staticfiles/

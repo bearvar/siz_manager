@@ -1,30 +1,58 @@
-# Deployment Guide
+# SIZ Manager Deployment Guide
 
-## Requirements
-- Docker
-- Docker Compose
+## Production Deployment (Docker)
 
-## Setup Steps
+### Prerequisites
+- Docker 20.10+
+- Docker Compose 2.20+
 
-1. Generate secret key:
+### First-time Setup
 ```bash
-python -c "from django.core.management.utils import get_random_secret_key; print(f'SECRET_KEY={get_random_secret_key()}')" > .env
+# Build and start containers
+docker compose build
+docker compose up -d
+
+# Verify container status
+docker compose ps
+
+# View logs
+docker compose logs -f web
 ```
 
-2. Build and start containers:
+### Routine Maintenance
 ```bash
-docker-compose up --build -d
+# Create database backup
+docker compose exec web python manager/manage.py dumpdata --indent 2 > backup_$(date +%Y%m%d).json
+
+# Update containers
+docker compose build
+docker compose down
+docker compose up -d
 ```
 
-3. Create admin user (after first launch):
+## Docker Image Publishing
 ```bash
-docker-compose exec web python manager/manage.py createsuperuser
-# Follow interactive prompts to set up admin credentials
-```
+# Login to Docker Hub
+docker login
 
-4. Access the application at: http://localhost:80
+# Tag and push image
+docker tag siz_manager:latest yourusername/siz_manager:1.0.0
+docker push yourusername/siz_manager:1.0.0
+```
 
 ## Environment Configuration
-- Store production secrets in `.env` file
-- Never commit `.env` to version control
-- Update ALLOWED_HOSTS in `manager/manager/settings.py` for production
+Required `.env` file contents:
+```ini
+SECRET_KEY=your-secure-key-here
+ALLOWED_HOSTS=localhost,web
+CSRF_TRUSTED_ORIGINS=http://localhost
+DEBUG=False
+```
+
+## Post-Deployment Verification
+1. Check container health: `docker compose ps`
+2. Test application endpoint: `curl -I http://localhost`
+3. Verify static files: `ls -l staticfiles/`
+4. Check logs: `docker compose logs web`
+
+Note: The SQLite database will persist in the `./data` directory between deployments.

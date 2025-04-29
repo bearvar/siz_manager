@@ -24,9 +24,9 @@ load_dotenv()
 SECRET_KEY = os.environ['SECRET_KEY']  # Will fail explicitly if missing
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,web').split(',')
+CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost').split(',')
 
 
 # Django Q configuration
@@ -35,6 +35,10 @@ Q_CLUSTER = {
     'workers': 1,
     'timeout': 300,
     'retry': 3600,
+    'max_attempts': 3,
+    'ack_failures': True,
+    'save_limit': 1000,
+    'max_rss': 200000,  # 200MB per worker
     'schedule': {
         'daily_flushing_check': {
             'fn': 'core.management.commands.process_flushing_agents.Command.handle',
@@ -96,6 +100,10 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': os.path.join(BASE_DIR, 'data', 'db.sqlite3'),
+        'OPTIONS': {
+            'timeout': 30,
+            'check_same_thread': False,
+        }
     }
 }
 
@@ -140,7 +148,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -156,8 +167,8 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = 'users:login'
 LOGIN_REDIRECT_URL = 'core:index'
 
-# EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
-# EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
+EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
+EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
 
 
 LOGGING = {
