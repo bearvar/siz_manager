@@ -15,13 +15,14 @@ ENV PIP_RETRIES=5
 
 # Install runtime and build dependencies
 RUN apt-get update && apt-get install -y \
-    curl dumb-init \
+    curl dumb-init cron \
     gcc libpq-dev python3-dev openssl && \
     pip install "poetry==$POETRY_VERSION" && \
     rm -rf /var/lib/apt/lists/*
 
 # Create initialization script and directories
 COPY --chmod=+x entrypoint.sh /app/entrypoint.sh
+COPY --chmod=+x backups/backup_db.sh /app/backups/backup_db.sh
 RUN mkdir -p /app/manager/data && \
     chmod 755 /app/manager/data
 

@@ -49,6 +49,7 @@ def health_check(request):
     """Simple health check endpoint returning JSON response"""
     return JsonResponse({"status": "ok"})
 
+@login_required
 def index(request):
     today = date.today()
     quarters = []

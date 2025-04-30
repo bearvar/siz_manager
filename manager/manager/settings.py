@@ -102,10 +102,29 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'data', 'db.sqlite3'),
         'OPTIONS': {
             'timeout': 30,
-            'check_same_thread': False,
+            'check_same_thread': False
         }
     }
 }
+
+
+# SQLite configuration (remove connection closing)
+from django.db.backends.signals import connection_created
+
+def configure_sqlite(sender, connection, **kwargs):
+    """Optimize SQLite configuration without closing connections"""
+    if connection.vendor == 'sqlite':
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("PRAGMA journal_mode = TRUNCATE;")
+                cursor.execute("PRAGMA synchronous = NORMAL;")
+                cursor.execute("PRAGMA cache_size = -64000;")  # 64MB
+                cursor.execute("PRAGMA busy_timeout = 5000;")  # 5s timeout
+        except Exception as e:
+            print(f"Critical SQLite configuration error: {str(e)}")
+            raise SystemExit(1)
+
+connection_created.connect(configure_sqlite)
 
 
 # Password validation
@@ -161,6 +180,14 @@ CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'web']
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+
+# Add security middleware
+MIDDLEWARE.insert(1, 'django.middleware.security.SecurityMiddleware')
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -199,6 +226,11 @@ LOGGING = {
         'core.views': {
             'handlers': ['console'],
             'level': 'DEBUG',
+        },
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
         },
     },
 }
