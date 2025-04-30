@@ -52,7 +52,7 @@ urlpatterns = [
         name='password_change_done'
     ),
     path(
-        'password_reset',
+        'password_reset/',
         PasswordResetView.as_view(
             template_name='users/password_reset_form.html',
             form_class=CustomPasswordResetForm
