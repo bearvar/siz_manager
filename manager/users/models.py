@@ -12,3 +12,6 @@ class CustomUser(AbstractUser):
     department = models.CharField(
         max_length=100,
         verbose_name='Подразделение')
+    last_activity = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Последняя активность')

@@ -23,6 +23,9 @@ mkdir -p data staticfiles media backups
 # Запустите сервисы
 docker compose up -d --build
 
+# Создайте миграции
+docker compose exec web python manager/manage.py makemigrations
+
 # Примените миграции
 docker compose exec web python manager/manage.py migrate
 
@@ -37,6 +40,9 @@ New-Item -ItemType Directory -Force -Path data,staticfiles,media,backups
 
 # Запустите сервисы
 docker compose up -d --build
+
+# Создайте миграции
+docker compose exec web python manager/manage.py makemigrations
 
 # Выполните миграции
 docker compose exec web python manager/manage.py migrate

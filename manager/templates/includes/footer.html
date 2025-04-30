@@ -1,7 +1,15 @@
-<footer class="border-top text-center py-3">
-  <p>Данные поддержки: 
-    <a href="mailto:malev-aa@te.ru" style="color: black; text-decoration: underline;">
-      malev-aa@te.ru
-    </a>
-  </p>
+<footer class="border-top py-3 mt-auto">
+  <div class="container d-flex justify-content-between align-items-center">
+    <div>
+      <p class="mb-0">Данные поддержки: 
+        <a href="mailto:malev-aa@te.ru" style="color: black; text-decoration: underline;">
+          malev-aa@te.ru
+        </a>
+      </p>
+    </div>
+    <div class="text-muted">
+      {% load user_count %}
+      <i class="bi bi-people-fill"></i> Активные пользователи: {% get_active_user_count %}
+    </div>
+  </div>
 </footer>
