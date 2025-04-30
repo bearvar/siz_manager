@@ -45,6 +45,10 @@ from users.models import CustomUser
 logger = logging.getLogger(__name__)
 
 
+def health_check(request):
+    """Simple health check endpoint returning JSON response"""
+    return JsonResponse({"status": "ok"})
+
 def index(request):
     today = date.today()
     quarters = []

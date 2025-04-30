@@ -8,6 +8,7 @@ def health_check(request):
 app_name = 'core'
 
 urlpatterns = [
+    path('health/', health_check, name='health_check'),
     path('', views.index, name='index'),
     path('profile/<str:username>/', views.profile, name='profile'),
     path('employee/create/', views.employee_create, name='employee_create'),
