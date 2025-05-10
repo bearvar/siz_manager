@@ -23,11 +23,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv()
 SECRET_KEY = os.environ['SECRET_KEY']  # Will fail explicitly if missing
 
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,web').split(',')
+# ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'http://localhost').split(',')
 
+USE_X_FORWARDED_HOST = True
+# SECURE_PROXY_SSL_HEADER = (os.environ.get('SECURE_PROXY_SSL_HEADER', 'HTTP_X_FORWARDED_PROTO').strip(), 
+#                           os.environ.get('SECURE_PROXY_SSL_VALUE', 'http').strip())
 
 # Django Q configuration
 Q_CLUSTER = {
@@ -172,11 +177,11 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Security settings for Docker deployment
-CSRF_COOKIE_SECURE = True
-SESSION_COOKIE_SECURE = True
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'web']
+# Security settings for Docker deployment (controlled by environment)
+CSRF_COOKIE_SECURE = os.environ.get('CSRF_COOKIE_SECURE', 'False') == 'True'
+SESSION_COOKIE_SECURE = os.environ.get('SESSION_COOKIE_SECURE', 'False') == 'True'
+CSRF_COOKIE_SAMESITE = os.environ.get('CSRF_COOKIE_SAMESITE', 'Lax')
+SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
 SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True

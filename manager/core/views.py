@@ -1242,14 +1242,14 @@ def norm_height_edit(request, group_id):
 def norm_height_update(request, norm_id):
     try:
         norm = NormHeight.objects.select_related('height_group').get(pk=norm_id)
-        monthly_ml = int(request.POST.get('monthly_ml', 0))
+        lifespan = int(request.POST.get('lifespan', 0))
         
         # Валидация данных
-        if monthly_ml < 1:
-            raise ValueError("Норма расхода должна быть положительным числом")
+        if lifespan < 1:
+            raise ValueError("Срок годности должен быть положительным числом")
             
         # Обновление данных
-        norm.monthly_ml = monthly_ml
+        norm.lifespan = lifespan
         norm.save()
         
         messages.success(request, f"Норма для {norm.ppe_type.name} обновлена")

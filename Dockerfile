@@ -1,60 +1,54 @@
-FROM python:3.10-slim
+# Build stage
+FROM python:3.10-slim AS builder
 
-# Container metadata
-LABEL org.opencontainers.image.title="SIZ Manager"
-LABEL org.opencontainers.image.description="Django application for safety equipment management"
-LABEL org.opencontainers.image.version="1.0.0"
-LABEL org.opencontainers.image.authors="Your Organization <support@example.com>"
+ENV POETRY_VERSION=1.8.2 \
+    PYTHONFAULTHANDLER=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONHASHSEED=random \
+    DJANGO_SETTINGS_MODULE="manager.settings"
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
-ENV POETRY_VERSION=1.8.2
-ENV PIP_DEFAULT_TIMEOUT=100
-ENV PIP_RETRIES=5
-
-# Install runtime and build dependencies
 RUN apt-get update && apt-get install -y \
-    curl dumb-init cron \
-    gcc libpq-dev python3-dev openssl && \
+    curl gcc python3-dev bash coreutils openssl && \
     pip install "poetry==$POETRY_VERSION" && \
     rm -rf /var/lib/apt/lists/*
 
-# Create initialization script and directories
-COPY --chmod=+x entrypoint.sh /app/entrypoint.sh
-COPY --chmod=+x backups/backup_db.sh /app/backups/backup_db.sh
-RUN mkdir -p /app/manager/data && \
-    chmod 755 /app/manager/data
-
-# Set work directory and copy project files
 WORKDIR /app
-COPY pyproject.toml poetry.lock /app/
+COPY pyproject.toml poetry.lock ./
+RUN poetry config virtualenvs.in-project true && \
+    poetry install --only main --no-interaction --no-ansi
 
-# Install python-dotenv and ensure .env exists
-RUN pip install python-dotenv && \
-    (test -f .env || (echo "SECRET_KEY=temp-insecure-key-$(openssl rand -hex 32)" > .env && \
-    echo "DJANGO_DEBUG=False" >> .env && \
-    echo "WARNING: Temporary configuration generated - update .env for production!"))
+# Runtime stage
+FROM python:3.10-slim AS production
 
-# Install core numerical packages first with pip
-RUN pip install --retries 5 --trusted-host pypi.python.org \
-    --trusted-host pypi.org --trusted-host files.pythonhosted.org \
-    numpy==1.26.4 pandas==2.2.1
+RUN apt-get update && apt-get install -y \
+    dumb-init cron libsqlite3-0 && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd --create-home appuser && \
+    mkdir -p /app/manager/data /app/backups && \
+    chown -R appuser:appuser /app
 
-# Install project dependencies
-RUN poetry config virtualenvs.create false && \
-    poetry install --no-interaction --no-ansi --no-cache
 
-# Copy application code
-COPY manager /app/manager
-COPY static /app/static
+RUN mkdir -p /var/log/cron && \
+    touch /var/log/cron/cron.log && \
+    chown -R appuser:appuser /var/log/cron
 
-# Create and collect static files with proper permissions
-RUN mkdir -p /app/manager/staticfiles && \
-    chmod -R 755 /app/manager/staticfiles && \
-    python manager/manage.py collectstatic --noinput --clear
+USER appuser
+WORKDIR /app
 
-# Expose port and run Gunicorn
+# Copy virtualenv from builder
+COPY --from=builder --chown=appuser:appuser /app/.venv ./.venv
+COPY --chown=appuser:appuser manager manager
+COPY --chown=appuser:appuser static static
+COPY --chown=appuser:appuser --chmod=755 entrypoint.sh backups/backup_db.sh ./
+
+ENV PATH="/app/.venv/bin:$PATH" \
+    SQLITE_DB_PATH="/app/manager/data/db.sqlite3" \
+    SQLITE_TIMEOUT=60 \
+    SQLITE_MMAP_SIZE=268435456 \
+    SQLITE_JOURNAL_MODE=WAL
+
+RUN python manager/manage.py collectstatic --noinput --clear
+
 EXPOSE 8000
-ENTRYPOINT ["/app/entrypoint.sh"]
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--pythonpath", "manager", "manager.wsgi:application"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["./entrypoint.sh"]

@@ -3,12 +3,12 @@ services:
     build: 
       context: .
       args:
-        - SECRET_KEY=${SECRET_KEY}
+        - SECRET_KEY=${SECRET_KEY:-default-insecure-key-1234}
     volumes:
       - persistent_data:/app/manager/data
     env_file: 
-      - .env
-    command: sh -c "python manager/manage.py makemigrations core --noinput && python manager/manage.py migrate"
+      - manager/.env
+    command: sh -c "export PYTHONPATH=/app/manager && python manager/manage.py makemigrations core --noinput && python manager/manage.py migrate"
     restart: on-failure
     networks: 
       backend:
@@ -17,7 +17,7 @@ services:
     build:
       context: .
       args:
-        - SECRET_KEY=${SECRET_KEY}
+        - SECRET_KEY=${SECRET_KEY:-default-insecure-key-1234}
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -32,35 +32,40 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"]
       interval: 300s
-      timeout: 5s
-      retries: 5
-      start_period: 40s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
     logging:
       options:
         max-size: "20m"
         max-file: "5"
-    volumes:
-      - persistent_data:/app/manager/data
-      - static_volume:/app/manager/staticfiles
-      - media_volume:/app/manager/media
-      - backup_volume:/app/backups
     env_file:
-      - .env
+      - manager/.env
+    user: "appuser"
     environment:
       - PYTHONUNBUFFERED=1
-      - GUNICORN_CMD_ARGS=--access-logfile - --error-logfile - --capture-output --log-level info --preload
-      - SQLITE_TIMEOUT=30
+      - PYTHONPATH=/app/manager
+      - DJANGO_SETTINGS_MODULE=manager.settings
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - GUNICORN_WORKERS=2
+      - GUNICORN_THREADS=2
+      - SQLITE_TIMEOUT=60
       - SQLITE_MMAP_SIZE=268435456
+      - SQLITE_JOURNAL_MODE=WAL
+    volumes:
+      - persistent_data:/app/manager/data:rw,cached
+      - static_volume:/app/manager/staticfiles:ro
+      - media_volume:/app/manager/media:rw,cached
+      - backup_volume:/app/backups:rw
     command: >
-      dumb-init sh -c "
-        echo 'Starting backup service...' &&
-        (crontab -l 2>/dev/null; echo '0 2 * * * /app/backups/backup_db.sh') | crontab - &&
-        service cron start &&
-        gunicorn --bind 0.0.0.0:8000 --workers 1 --threads 4 --pythonpath manager manager.wsgi:application
+      bash -c "
+        python manager/manage.py migrate --noinput &&
+        exec gunicorn --bind 0.0.0.0:8000 --workers 3 --threads 2 manager.wsgi:application
       "
-
   nginx:
-    image: nginx:1.25-alpine
+    image: nginx:1.28
     ports:
       - "80:80"
     volumes:
