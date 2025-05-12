@@ -1,6 +1,6 @@
 services:
   web:
-    image: cr.yandex/crp2hgrg6imtfn9h9lpi/siz_manager:1.0.4
+    image: cr.yandex/crp2hgrg6imtfn9h9lpi/siz_manager:1.0.8
     env_file: .env.prod
     environment:
       - PYTHONUNBUFFERED=1

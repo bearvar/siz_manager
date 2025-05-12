@@ -1,112 +1,77 @@
 # Руководство по развертыванию SIZ Manager
 
-## Требования к системе
-- Docker 20.10.17+
-- Docker Compose 2.3.0+
-- 1 ГБ оперативной памяти
-- 5 ГБ свободного места на диске
-
 ## Конфигурация окружения
-1. Создайте файл `.env` в корне проекта:
+1. Создайте файл `.env.prod` в корне проекта:
 ```bash
-SECRET_KEY=сгенерируйте_ключ_openssl_rand_-hex_32
-DJANGO_DEBUG=False
-ALLOWED_HOSTS=localhost,web
-CSRF_TRUSTED_ORIGINS=http://localhost,http://web,
+DEBUG=0
+ALLOWED_HOSTS='*'
+SQLITE_DB_PATH=/app/manager/data/db.sqlite3
+DJANGO_SETTINGS_MODULE="manager.settings"
+CSRF_TRUSTED_ORIGINS=http://123.123.123.123
+CSRF_COOKIE_SECURE=False
+SESSION_COOKIE_SECURE=False
+CSRF_COOKIE_SAMESITE=Lax
+SESSION_COOKIE_SAMESITE=Lax
+```
+В CSRF_TRUSTED_ORIGINS должен быть указан IP сервера на котором будет развернут проект.
+Также нужно добавить SECRET_KEY в этот файл. Его можно сгенерировать через командную строку.
+Для linux:
+```bash
+echo "SECRET_KEY=$(openssl rand -base64 64 | tr -d '\n')" >> .env.prod
+```
+Для windows:
+  Используя OpenSSL (если установлен):
+```powershell
+echo "SECRET_KEY=$(openssl rand -base64 64)" >> .env.prod
+```
+  Или чистый PowerShell:
+```powershell
+$bytes = New-Object Byte[] 64
+[Security.Cryptography.RNGCryptoServiceProvider]::Create().GetBytes($bytes)
+$secret = [Convert]::ToBase64String($bytes)
+echo "SECRET_KEY=$secret" >> .env.prod
 ```
 
-## Развертывание для Linux
+## Развертывание
 ```bash
-# Создайте необходимые директории
-mkdir -p data staticfiles media backups
+# Создайте необходимые директории и задайте им права доступа
+# Команды для Linux:
+mkdir -p data static media backups
+chown -R 1000:1000 data static media backups
+# Команды для Windows:
+mkdir data static media backups
+icacls data static media backups /grant "%username%":(F) /T
+
+# Разместить в папке проекта файлы `docker-compose.prod.yml` и `nginx-prod.conf`.
+
+# Скачать образ приложения
+docker compose -f docker-compose.prod.yml pull
 
 # Запустите сервисы
-docker compose up -d --build
+docker compose -f docker-compose.prod.yml up -d
 
 # Создайте миграции
-docker compose exec web python manager/manage.py makemigrations
+docker compose -f docker-compose.prod.yml exec web python manager/manage.py makemigrations core users
 
 # Примените миграции
-docker compose exec web python manager/manage.py migrate
+docker compose -f docker-compose.prod.yml exec web python manager/manage.py migrate
 
-# Создайте суперпользователя
-docker compose exec web python manager/manage.py createsuperuser
+# Создайте суперпользователя (после выполнения команды следуйте подсказам контекстного меню)
+docker compose -f docker-compose.prod.yml exec web python manager/manage.py createsuperuser
 ```
 
-## Развертывание для Windows (PowerShell)
-```powershell
-# Создайте директории
-New-Item -ItemType Directory -Force -Path data,staticfiles,media,backups
-
-# Запустите сервисы
-docker compose up -d --build
-
-# Создайте миграции
-docker compose exec web python manager/manage.py makemigrations
-
-# Выполните миграции
-docker compose exec web python manager/manage.py migrate
-
-# Создайте администратора
-docker compose exec web python manager/manage.py createsuperuser
-```
-
-## Особенности SQLite
-1. Файл БД хранится в `./data/db.sqlite3`
-2. Резервное копирование выполняется ежедневно в 02:00 UTC
-3. Для ручного бэкапа:
-```bash
-docker compose exec web /app/backups/backup_db.sh
-```
 
 ## Ключевые команды
 ```bash
 # Просмотр логов приложения
-docker compose logs -f web
+docker compose -f docker-compose.prod.yml logs web --tail=100 -f
 
-# Пересборка контейнеров
-docker compose down && docker compose up -d --build
+# Просмотр логов прокси
+docker compose -f docker-compose.prod.yml logs nginx --tail=100 -f
 
-# Очистка устаревших данных
-docker compose exec web python manage.py clearsessions
+# Остановка контейнеров
+docker compose -f docker-compose.prod.yml stop
+
+# Запуск контейнеров
+docker compose -f docker-compose.prod.yml up -d
 ```
-
-## Безопасность
-1. Всегда устанавливайте `DJANGO_DEBUG=False` в продакшене
-2. Регулярно обновляйте SECRET_KEY
-3. Ограничьте доступ к портам 8000 и 80
-
-## Структура проекта
-```
-siz_manager/
-├── data/           # Директория SQLite баз данных
-├── backups/        # Резервные копии БД
-├── media/          # Загружаемые файлы
-├── staticfiles/    # Собранные статические файлы
-└── manager/        # Исходный код приложения
-```
-
-## Мониторинг
-```bash
-# Проверка здоровья приложения
-curl http://localhost:8000/health/
-
-# Статус cron задач
-docker compose exec web tail -f /var/log/cron.log
-```
-
-## Обновление версии
-```bash
-docker compose down
-git pull origin main
-docker compose up -d --build
-docker compose exec web python manage.py migrate
-```
-
-## Устранение неполадок
-```bash
-# Восстановление из бэкапа
-docker compose exec web cp /app/backups/latest.sqlite3 /app/data/db.sqlite3
-
-# Пересоздание индексов
-docker compose exec web python manage.py reindex
