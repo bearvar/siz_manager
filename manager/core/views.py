@@ -159,31 +159,55 @@ def index(request):
                         deficit = norm_data['required_quantity'] - current_valid_quantity
 
                         if deficit > 0:
+                            # Determine item_size based on PPE type and employee attributes
+                            item_size_to_set = "Не указан"
+                            ppe_type_name_lower = norm_data['ppe_type_obj'].name.lower()
+
+                            size_mapping = {
+                                'body_size': ["костюм", "куртка", "брюки", "халат", "комбинезон", "плащ", "жилет"],
+                                'shoe_size': ["ботинки", "сапоги", "полуботинки", "туфли", "галоши"],
+                                'head_size': ["каска", "шапка", "шлем", "подшлемник", "берет"],
+                                'glove_size': ["перчатки", "рукавицы", "краги"],
+                            }
+
+                            for attr_name, keywords in size_mapping.items():
+                                for keyword in keywords:
+                                    if keyword in ppe_type_name_lower:
+                                        size_value = getattr(emp, attr_name, None)
+                                        if size_value:
+                                            item_size_to_set = str(size_value)
+                                        break
+                                if item_size_to_set != "Не указан" and item_size_to_set is not None : # Found and set from this category
+                                    break
+
                             needed_items_for_emp.append({
                                 'ppe_type': norm_data['ppe_type_obj'],
-                                'item_name': "Требуется по норме",
+                                'item_name': "Требуется по норме", # Generic name
                                 'quantity': deficit,
-                                'item_size': "N/A",
-                                'issue_date': "N/A",
-                                'expiration_date': first_quarter_end_date, # For display consistency
+                                'item_size': item_size_to_set, # Set based on logic above
+                                'issue_date': "N/A", # Remains N/A
+                                'expiration_date': None, # Set to None as per new requirement
+                                'target_quarter_end_date': q['end_date'], # New field for target date
                                 'is_needed_item': True
                             })
 
-                if emp.id not in employees_data_for_quarter and not needed_items_for_emp: # Skip if no expiring and no needed
+                if emp.id not in employees_data_for_quarter and not needed_items_for_emp:
                     continue
 
                 if emp.id not in employees_data_for_quarter:
-                     employees_data_for_quarter[emp.id] = {
+                    employees_data_for_quarter[emp.id] = {
                         'employee': emp,
                         'issue_groups': [],
                         'needed_items': needed_items_for_emp,
-                        'count': 0, # No expiring items
+                        'count': 0,
                         'flushing_needs': []
                     }
                 else:
+                    # Ensure needed_items is initialized if it wasn't (e.g. employee had expiring but no needed initially)
+                    if 'needed_items' not in employees_data_for_quarter[emp.id]:
+                        employees_data_for_quarter[emp.id]['needed_items'] = []
                     employees_data_for_quarter[emp.id]['needed_items'].extend(needed_items_for_emp)
 
-        # Convert dict to list for template
         employees_list = sorted(employees_data_for_quarter.values(), key=lambda x: (x['employee'].last_name, x['employee'].first_name))
         
         quarterly_data.append({
@@ -192,11 +216,10 @@ def index(request):
             'start_date': q['start_date'],
             'end_date': q['end_date'],
             'employees': employees_list,
-            'total': expiring_issues_qs.count() # This is total of expiring, might need adjustment for "needed"
+            'total': expiring_issues_qs.count()
         })
 
     # Calculate flushing agent needs for each employee in each quarter
-    # This part might need adjustment if employees_list structure changed significantly for it
     for quarter_entry in quarterly_data:
         year = quarter_entry['year']
         quarter_num = quarter['quarter']

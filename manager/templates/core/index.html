@@ -81,7 +81,7 @@
                                         <td class="text-center">{{ item.item_size }}</td>
                                         <td class="text-center">{{ item.quantity }}</td>
                                         <td class="text-center">
-                                            {{ item.expiration_date|date:"d.m.Y" }}
+                                            {{ item.target_quarter_end_date|date:"d.m.Y" }}
                                         </td>
                                     </tr>
                                     {% endfor %}
