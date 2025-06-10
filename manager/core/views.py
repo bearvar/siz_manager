@@ -84,53 +84,121 @@ def index(request):
         current_date = end_date + relativedelta(days=1)
     
     quarterly_data = []
-    for q in quarters:
-        # Fetch active issues for the quarter
-        issues = Issue.objects.filter(
+    all_active_employees = Employee.objects.filter(is_active=True).select_related('position', 'height_group')
+
+    # Prepare employee_ppe_needs_map to store required PPEs per employee
+    employee_ppe_needs_map = defaultdict(lambda: defaultdict(lambda: {'required_quantity': 0, 'lifespan_months': 0, 'ppe_type_obj': None}))
+
+    for emp in all_active_employees:
+        norms_to_check = []
+        if emp.position:
+            norms_to_check.extend(Norm.objects.filter(position=emp.position).select_related('ppe_type'))
+        if emp.height_group:
+            norms_to_check.extend(NormHeight.objects.filter(height_group=emp.height_group).select_related('ppe_type'))
+
+        for norm_item in norms_to_check:
+            ppe_type = norm_item.ppe_type
+            data = employee_ppe_needs_map[emp][ppe_type]
+            data['required_quantity'] += norm_item.quantity
+            # Use hasattr for lifespan as Norm and NormHeight have different field names or ways to access it.
+            # Assuming Norm has 'lifespan' and NormHeight has 'lifespan'
+            current_lifespan = getattr(norm_item, 'lifespan', 0) # Default to 0 if not found
+            data['lifespan_months'] = max(data['lifespan_months'], current_lifespan)
+            data['ppe_type_obj'] = ppe_type
+
+    first_quarter_end_date = quarters[0]['end_date'] if quarters else today
+
+    for idx, q in enumerate(quarters):
+        # Fetch active expiring issues for the quarter
+        expiring_issues_qs = Issue.objects.filter(
             expiration_date__gte=q['start_date'],
             expiration_date__lte=q['end_date'],
             is_active=True
-        ).select_related('employee', 'ppe_type').order_by('expiration_date')
-        
-        # Group by employee and aggregate issues
-        employees_issues = defaultdict(list)
-        for issue in issues:
-            employees_issues[issue.employee].append(issue)
-        
-        employees_list = []
-        for employee, items in employees_issues.items():
-            # Group duplicate issues
+        ).select_related('employee', 'ppe_type').order_by('employee__last_name', 'employee__first_name', 'expiration_date')
+
+        # Group expiring issues by employee
+        employees_expiring_issues = defaultdict(list)
+        for issue in expiring_issues_qs:
+            employees_expiring_issues[issue.employee].append(issue)
+
+        employees_data_for_quarter = {} # Using dict for easier employee lookup and update
+
+        # Populate with expiring issues
+        for employee, items in employees_expiring_issues.items():
             grouped = defaultdict(list)
             for issue in items:
                 key = (issue.ppe_type_id, issue.item_name, issue.item_size, issue.issue_date, issue.expiration_date)
                 grouped[key].append(issue)
             
-            issue_groups = [
+            issue_groups = sorted([
                 {'issue': group[0], 'quantity': len(group)}
                 for key, group in grouped.items()
-            ]
-            issue_groups = sorted(issue_groups, key=lambda x: x['issue'].expiration_date)
+            ], key=lambda x: x['issue'].expiration_date)
             
-            employees_list.append({
+            employees_data_for_quarter[employee.id] = {
                 'employee': employee,
                 'issue_groups': issue_groups,
-                'count': len(items),
-                'flushing_needs': []  # Initialize empty list for flushing needs
-            })
+                'needed_items': [], # Initialize needed_items
+                'count': len(items), # Count of expiring items
+                'flushing_needs': []
+            }
+
+        # For the first quarter, calculate and add needed PPE
+        if idx == 0:
+            for emp in all_active_employees:
+                needed_items_for_emp = []
+                if emp in employee_ppe_needs_map:
+                    for ppe_type, norm_data in employee_ppe_needs_map[emp].items():
+                        active_issues_for_ppe = Issue.objects.filter(
+                            employee=emp,
+                            ppe_type=ppe_type,
+                            is_active=True
+                        ).filter(Q(expiration_date__gte=today) | Q(expiration_date__isnull=True))
+
+                        current_valid_quantity = active_issues_for_ppe.count()
+                        deficit = norm_data['required_quantity'] - current_valid_quantity
+
+                        if deficit > 0:
+                            needed_items_for_emp.append({
+                                'ppe_type': norm_data['ppe_type_obj'],
+                                'item_name': "Требуется по норме",
+                                'quantity': deficit,
+                                'item_size': "N/A",
+                                'issue_date': "N/A",
+                                'expiration_date': first_quarter_end_date, # For display consistency
+                                'is_needed_item': True
+                            })
+
+                if emp.id not in employees_data_for_quarter and not needed_items_for_emp: # Skip if no expiring and no needed
+                    continue
+
+                if emp.id not in employees_data_for_quarter:
+                     employees_data_for_quarter[emp.id] = {
+                        'employee': emp,
+                        'issue_groups': [],
+                        'needed_items': needed_items_for_emp,
+                        'count': 0, # No expiring items
+                        'flushing_needs': []
+                    }
+                else:
+                    employees_data_for_quarter[emp.id]['needed_items'].extend(needed_items_for_emp)
+
+        # Convert dict to list for template
+        employees_list = sorted(employees_data_for_quarter.values(), key=lambda x: (x['employee'].last_name, x['employee'].first_name))
         
-        # Add employee data to quarterly_data
         quarterly_data.append({
             'quarter': q['quarter'],
             'year': q['year'],
             'start_date': q['start_date'],
             'end_date': q['end_date'],
             'employees': employees_list,
-            'total': issues.count()
+            'total': expiring_issues_qs.count() # This is total of expiring, might need adjustment for "needed"
         })
-    
+
     # Calculate flushing agent needs for each employee in each quarter
-    for quarter in quarterly_data:
-        year = quarter['year']
+    # This part might need adjustment if employees_list structure changed significantly for it
+    for quarter_entry in quarterly_data:
+        year = quarter_entry['year']
         quarter_num = quarter['quarter']
         
         for emp_data in quarter['employees']:

@@ -60,6 +60,35 @@
                             </tbody>
                         </table>
 
+                        {% comment %} Display Needed PPE Items for the First Quarter {% endcomment %}
+                        {% if forloop.parentloop.first and emp_data.needed_items %}
+                            <h5 class="mt-4">Необходимо выдать по нормам</h5>
+                            <table class="table table-sm table-hover table-bordered mb-0">
+                                <thead class="bg-warning">
+                                    <tr>
+                                        <th style="width: 32%" class="text-center">Тип СИЗ</th>
+                                        <th style="width: 29%" class="text-center">Наименование</th>
+                                        <th style="width: 10% " class="text-center">Размер</th>
+                                        <th style="width: 5% " class="text-center">Количество</th>
+                                        <th style="width: 12% " class="text-center">Требуется до</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in emp_data.needed_items %}
+                                    <tr class="table-light">
+                                        <td>{{ item.ppe_type.name }}</td>
+                                        <td>{{ item.item_name }}</td>
+                                        <td class="text-center">{{ item.item_size }}</td>
+                                        <td class="text-center">{{ item.quantity }}</td>
+                                        <td class="text-center">
+                                            {{ item.expiration_date|date:"d.m.Y" }}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% endif %}
+
                         <!-- Add Flushing Agent Needs Table -->
                         {% if emp_data.flushing_needs %}
                         <h5 class="mt-4">Смывающие средства</h5>
