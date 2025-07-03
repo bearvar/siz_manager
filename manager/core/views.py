@@ -52,9 +52,19 @@ def health_check(request):
 @login_required
 def index(request):
     today = date.today()
-    quarters = []
+    # Calculate current quarter and year
+    current_quarter = (today.month - 1) // 3 + 1
+    current_year = today.year
     
-    # Generate 4 upcoming quarters
+    # Calculate next quarter
+    if current_quarter == 4:
+        next_quarter = 1
+        next_year = current_year + 1
+    else:
+        next_quarter = current_quarter + 1
+        next_year = current_year
+    
+    quarters = []
     current_date = today
     for _ in range(4):
         year = current_date.year
@@ -84,7 +94,48 @@ def index(request):
         current_date = end_date + relativedelta(days=1)
     
     quarterly_data = []
+    # Prefetch all norms outside the loop
+    all_positions = Position.objects.in_bulk()
+    all_height_groups = HeightGroup.objects.in_bulk()
+    
+    # Collect all position and height group IDs
+    position_ids = set()
+    height_group_ids = set()
+    
     for q in quarters:
+        # Fetch active issues for the quarter
+        issues = Issue.objects.filter(
+            expiration_date__gte=q['start_date'],
+            expiration_date__lte=q['end_date'],
+            is_active=True
+        ).select_related('employee', 'ppe_type').order_by('expiration_date')
+        
+        # Collect IDs for optimization
+        for issue in issues:
+            if issue.employee.position_id:
+                position_ids.add(issue.employee.position_id)
+            if issue.employee.height_group_id:
+                height_group_ids.add(issue.employee.height_group_id)
+    
+    # Fetch all relevant norms
+    position_norms = Norm.objects.filter(
+        position_id__in=position_ids
+    ).select_related('ppe_type')
+    
+    height_norms = NormHeight.objects.filter(
+        height_group_id__in=height_group_ids
+    ).select_related('ppe_type')
+    
+    # Group norms by position and height group
+    norms_by_position = defaultdict(list)
+    for norm in position_norms:
+        norms_by_position[norm.position_id].append(norm)
+    
+    norms_by_height_group = defaultdict(list)
+    for norm in height_norms:
+        norms_by_height_group[norm.height_group_id].append(norm)
+    
+    for idx, q in enumerate(quarters):
         # Fetch active issues for the quarter
         issues = Issue.objects.filter(
             expiration_date__gte=q['start_date'],
@@ -110,6 +161,36 @@ def index(request):
                 for key, group in grouped.items()
             ]
             issue_groups = sorted(issue_groups, key=lambda x: x['issue'].expiration_date)
+            
+            # Add virtual items for missing PPE only in the next quarter
+            if q['quarter'] == next_quarter and q['year'] == next_year:
+                if employee.position_id or employee.height_group_id:
+                    # Get all relevant norms
+                    norms = []
+                    
+                    if employee.position_id:
+                        norms.extend(norms_by_position.get(employee.position_id, []))
+                    
+                    if employee.height_group_id:
+                        norms.extend(norms_by_height_group.get(employee.height_group_id, []))
+                    
+                    # Create set of issued PPE types
+                    issued_ppe_types = {group['issue'].ppe_type_id for group in issue_groups}
+                    
+                    for norm in norms:
+                        if norm.ppe_type_id not in issued_ppe_types:
+                            # Create virtual issue for missing PPE
+                            virtual_issue = type('obj', (object,), {
+                                'ppe_type': norm.ppe_type,
+                                'item_name': norm.ppe_type.name,
+                                'item_size': None,
+                                'expiration_date': q['start_date'],  # First day of quarter
+                                'is_virtual': True
+                            })
+                            issue_groups.append({
+                                'issue': virtual_issue,
+                                'quantity': norm.quantity
+                            })
             
             employees_list.append({
                 'employee': employee,

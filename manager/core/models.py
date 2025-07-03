@@ -532,6 +532,11 @@ class Issue(models.Model):
         choices=MEASUREMENT_UNITS,
         default="шт."
     )
+    is_virtual = models.BooleanField(
+        "Виртуальная выдача (не выданная)",
+        default=False,
+        help_text="Отмечает виртуальные выдачи, созданные для отображения потребности в СИЗ"
+    )
     
     def save(self, *args, **kwargs):
         # Если дата списания была изменена вручную - сохраняем как есть
