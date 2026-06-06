@@ -14,6 +14,14 @@ This is a Django 5 project packaged with Poetry. The Django entry point is `mana
 - `docker compose up --build` builds and runs the local container stack.
 - `docker compose -f docker-compose.prod.yml up -d` starts the production compose stack.
 
+## Plans
+
+Put bot update plans in `/plans/`. Filename = resulting bot version with short description.
+
+## Versions
+
+Each update must add `.md` changelog file in `/versions/` named by version. Also bump version string in script header.
+
 ## Coding Style & Naming Conventions
 
 Use idiomatic Python with 4-space indentation. Keep Django models, forms, views, and URL declarations in their conventional app files. Name classes in `PascalCase`, functions and variables in `snake_case`, and templates by feature/action, for example `employee_list.html` or `create_issue.html`. Keep Russian user-facing text consistent with existing templates and commit history. Do not edit generated or collected static files unless the task explicitly requires it; prefer source assets in `manager/static/`.
