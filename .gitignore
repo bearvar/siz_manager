@@ -129,6 +129,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env_*
 .env.prod
 .venv
 env/
@@ -173,3 +174,26 @@ cython_debug/
 
 # VSCode folder
 .vscode
+
+# Office/editor lock files
+.~lock.*
+*.swp
+*.swo
+
+# Local archives, temp files, and exported spreadsheets
+*.zip
+tmp/
+*.tmp
+*.xlsx
+
+# Claude/Codex/Qwen internals (local-only)
+.claude/
+.codex/
+.agents/
+.agent/
+.qwen/
+.superpowers/
+skills-lock.json
+
+# Local Poetry config
+poetry.toml
