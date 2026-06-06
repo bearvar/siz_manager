@@ -1,7 +1,7 @@
 {% load static %}
 
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="{{ ui_theme|default:'light' }}">
   <head>    
     <meta charset="utf-8">
     <!-- Сайт готов работать с мобильными устройствами -->
@@ -11,7 +11,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/fav/favicond.png' %}">
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'img/fav/favicond.png' %}">
     <meta name="msapplication-TileColor" content="#000">
-    <meta name="theme-color" content="#ffffff">
+    <meta name="theme-color" content="#0ea5e9">
     <!-- Подключен файл со стандартными стилями бустрап -->
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <!-- Custom CSS -->
@@ -27,7 +27,7 @@
       {% endblock %}
     </title>
   </head>
-  <body>
+  <body class="app-shell">
     <header>
       {% include 'includes/header.html' %}
     </header>
@@ -39,6 +39,14 @@
       {% endblock %}
     </main>
     {% include 'includes/footer.html' %}
+    <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+    <script>
+      window.sizTheme = {
+        current: "{{ ui_theme|default:'light' }}",
+        themeEndpoint: "{% url 'users:set_theme' %}"
+      };
+    </script>
+    <script src="{% static 'js/theme-switcher.js' %}"></script>
     {% block scripts %}
     {% endblock %}
   </body>

@@ -1,11 +1,13 @@
 # users/views.py
 # Импортируем CreateView, чтобы создать ему наследника
 from django.views.generic import CreateView, TemplateView
+from django.http import JsonResponse
 from django.contrib.auth.views import (LogoutView, LoginView,
         PasswordChangeView, PasswordChangeDoneView,
         PasswordResetView, PasswordResetDoneView,
         PasswordResetConfirmView, PasswordResetCompleteView)
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
 
 # Функция reverse_lazy позволяет получить URL по параметрам функции path()
 # Берём, тоже пригодится
@@ -13,7 +15,22 @@ from django.urls import reverse_lazy
 
 # Импортируем класс формы, чтобы сослаться на неё во view-классе
 from .forms import CreationForm, CustomPasswordChangeForm, CustomPasswordResetForm, CustomSetPasswordForm
+from .theme import normalize_theme, set_theme_cookie
 
+
+@require_POST
+def set_theme(request):
+    theme = normalize_theme(request.POST.get("theme"))
+    if theme is None:
+        return JsonResponse({"error": "Unsupported theme"}, status=400)
+
+    if request.user.is_authenticated:
+        request.user.theme = theme
+        request.user.save(update_fields=["theme"])
+
+    response = JsonResponse({"theme": theme})
+    set_theme_cookie(response, theme)
+    return response
 
 
 class SignUp(CreateView):

@@ -21,6 +21,7 @@ class LogoutViewGet(LogoutView):
         return super().dispatch(request, *args, **kwargs)
 
 urlpatterns = [
+    path('theme/', views.set_theme, name='set_theme'),
     # Полный адрес страницы регистрации - auth/signup/,
     # но префикс auth/ обрабатывется в головном urls.py
     path('signup/', views.SignUp.as_view(), name='signup'),

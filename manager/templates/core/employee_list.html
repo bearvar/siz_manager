@@ -14,6 +14,7 @@
         {% include 'includes/messages.html' %}
         <a href="{% url 'core:employee_create' %}" class="btn btn-primary mb-3">Добавить работника</a>
 
+        <div class="table-responsive">
         <table class="table table-striped">
           <thead>
             <tr>
@@ -50,6 +51,7 @@
           {% endfor %}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
     </article>
