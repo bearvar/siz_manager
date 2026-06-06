@@ -200,6 +200,19 @@ main {
   line-height: 1.25;
 }
 
+.user-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.user-menu-toggle.dropdown-toggle::after {
+  margin-left: 0;
+}
+
 .top-navbar-container .navbar-nav .nav-link {
   color: rgba(255, 255, 255, 0.86) !important;
   border-radius: var(--siz-radius-nav);
